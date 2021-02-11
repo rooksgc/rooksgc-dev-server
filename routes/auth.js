@@ -89,4 +89,8 @@ router.post(
   }
 )
 
+router.get('/test', (req, res) => {
+  return res.json({message: 'Server test ok on /auth/test route.'})
+})
+
 module.exports = router
