@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "name": "dev-server",
+      "script": "./src/index.ts",
+      "watch": ["./src"],
+      "instances": 0,
+      "exec_mode": "fork"
+    }
+  ]
+}

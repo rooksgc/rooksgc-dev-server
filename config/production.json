@@ -1,6 +1,4 @@
 {
   "port": 5000,
-  "mongoUri": "mongodb://127.0.0.1:27017/?compressors=disabled&gssapiServiceName=mongodb",
-  "jwtSecret": "rooksgc await js secret 2021 dddd ex",
   "baseUrl": "http://127.0.0.1:5000"
 }
