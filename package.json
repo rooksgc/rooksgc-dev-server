@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/rooksgc/rooksgc-dev-server"
   },
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "start": "cross-env NODE_ENV=production ts-node src/index.ts",
     "dev": "cross-env NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec ts-node src/index.ts",
