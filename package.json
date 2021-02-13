@@ -15,6 +15,7 @@
   },
   "author": "Shestakov Anton<rooksgc@gmail.com>",
   "license": "MIT",
+  "postinstall": "$(yarn bin)/pm2 install typescript",
   "dependencies": {
     "config": "^3.3.3",
     "express": "^4.17.1"
