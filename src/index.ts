@@ -1,12 +1,13 @@
-const express = require('express')
-const config = require('config')
+import express from 'express'
+import config from 'config'
 const app = express()
 const PORT = config.get('port')
-const helloRoutes = require('./routes/hello')
+import helloRoutes from './routes/hello'
 
-app.use(express.json({ extended: true }))
+// todo fix type
+app.use(express.json({ extended: true } as unknown))
 
-// Routes
+// routes
 app.use('/api/hello', helloRoutes)
 
 async function start() {

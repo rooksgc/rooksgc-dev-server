@@ -8,7 +8,11 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noImplicitAny": false,
-    "outDir": "./build"
+    "outDir": "build",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
   },
-  "include": ["./src/**/*"]
+  "include": ["src/**/*"]
 }
