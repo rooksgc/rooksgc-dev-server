@@ -6,9 +6,10 @@ import userRoutes from './routes/user'
 
 const port = config.get('port')
 const host = config.get('host')
+const API_PATH = `${config.get('api.prefix')}/${config.get('api.version')}`
+
 const app = express()
 const router = Router()
-const API_PATH = `${config.get('api.prefix')}/${config.get('api.version')}`
 
 app.use(
   compression({
@@ -20,15 +21,12 @@ app.use(
     }
   })
 )
-app.use(
-  cors({
-    origin: host
-  })
-)
+
+app.use(cors({ origin: `${host}:${port}` }))
 app.use(express.json())
 app.use(express.urlencoded())
-
 app.use(API_PATH, router)
+
 userRoutes(router)
 
 async function start() {

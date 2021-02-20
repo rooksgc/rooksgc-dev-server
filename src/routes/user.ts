@@ -1,8 +1,10 @@
 import { Router } from 'express'
-import { getAll, create, update } from '../services/user'
+import UserService, { UserServiceApi } from '../services/user'
+
+const { findAll, create, update }: UserServiceApi = UserService()
 
 export default (router: Router): void => {
-  router.get('/users', getAll)
+  router.get('/users', findAll)
   router.post('/user/create', create)
   router.put('/user/:userId', update)
 }
