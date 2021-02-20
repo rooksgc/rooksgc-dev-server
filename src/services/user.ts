@@ -1,5 +1,21 @@
 import { Request, Response } from 'express'
 const User = require('../database/models').User
+import { validationResult } from 'express-validator'
+import bcrypt from 'bcryptjs'
+
+export interface UserDTO {
+  id: number
+  name: string
+  email: string
+  role: string
+  is_active: boolean
+}
+
+export enum UserRole {
+  USER = 'user',
+  MODERATOR = 'moderator',
+  ADMIN = 'admin'
+}
 
 export interface UserResponseDTO {
   id: number
@@ -10,14 +26,6 @@ export interface UserResponseDTO {
   is_active: boolean
   createdAt: string
   updatedAt: string
-}
-
-export interface UserDTO {
-  id: number
-  name: string
-  email: string
-  role: string
-  is_active: boolean
 }
 
 export interface UserCreateResponseError {
@@ -40,35 +48,53 @@ const UserService = (): UserServiceApi => {
     res: Response
   ): Promise<UserDTO | UserCreateResponseError> => {
     try {
-      // 1 Валидация полей (нет ли такого же email/name в базе)
-      // 2 Создание неактивного юзера (с флагом is_active: false и role: 'user')
       // 3 Запись в Secrets записи с новым сгенерированным секретом (public_code)
       //   и secret_type = SecretTypes.EMAIL_CONFIRMATION для used_id = id юзера
       // 4 Отсылка письма на email юзера со ссылкой для активации
 
-      const { name, email, password } = req.body
-      const foundedUser = await findByEmail(email)
+      let { name, email, password } = req.body
 
+      const errors = validationResult(req)
+
+      name = name.trim()
+      email = email.trim()
+      password = password.trim()
+
+      if (!errors.isEmpty()) {
+        console.log('Validation errors: ', errors)
+        res.status(400).json({ errors: errors.array() })
+      }
+
+      const foundedUser = await findByEmail(email)
       if (foundedUser) {
-        res.status(409).send({
+        res.status(409).json({
           error: `Email ${foundedUser.email} уже существует!`
         })
         return
       }
 
-      // todo hash password
+      const hashedPassword = await hashPassword(password)
+
       const newUser = await User.create({
         name,
         email,
-        password,
+        password: hashedPassword,
         role: 'user',
         is_active: false
       })
 
-      const userDTO = userToDTO(newUser)
-      res.status(201).send(userDTO)
+      // 1
+      // const secret = await tx.secretService.create(user.id, SecretTypes.emailConformation);
+
+      // 2 отправка e-mail в том числе и как средство проверки валидности email
+      // await this.emailService.confirmEmail(email, name, secret.publicCode);
+
+      const userDTO = newUser.dataValues
+      delete userDTO.password
+
+      res.status(201).json(userDTO)
     } catch (error) {
-      res.status(400).send(error)
+      res.status(400).json(error)
     }
   }
 
@@ -78,12 +104,12 @@ const UserService = (): UserServiceApi => {
   ): Promise<UserResponseDTO[]> => {
     try {
       const allUsers = await User.findAll()
-      res.status(201).send(allUsers)
+      res.status(201).json(allUsers)
 
       return allUsers
     } catch (e) {
       console.log(e)
-      res.status(500).send(e)
+      res.status(500).json(e)
     }
   }
 
@@ -100,22 +126,16 @@ const UserService = (): UserServiceApi => {
         const updatedUser = await User.update({
           email
         })
-        res.status(201).send(updatedUser)
+        res.status(201).json(updatedUser)
 
         return updatedUser
       } else {
-        res.status(404).send('Пользователь не найден!')
+        res.status(404).json('Пользователь не найден!')
       }
     } catch (e) {
       console.log(e)
-      res.status(500).send(e)
+      res.status(500).json(e)
     }
-  }
-
-  const userToDTO = (user: UserResponseDTO): UserDTO => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, createdAt, updatedAt, ...userDto } = user
-    return userDto
   }
 
   const findByEmail = async (email: string): Promise<UserResponseDTO> => {
@@ -123,6 +143,34 @@ const UserService = (): UserServiceApi => {
       return await User.findOne({ where: { email } })
     } catch (error) {
       console.log(error)
+    }
+  }
+
+  /**
+   * Вычисляет хеш от пароля.
+   * @param password пароль
+   * @return хеш пароля
+   */
+  const hashPassword = async (password: string): Promise<string> => {
+    const salt = await bcrypt.genSalt(10)
+    return await bcrypt.hash(password, salt)
+  }
+
+  /**
+   * Проверяет, что `hashed` является хешем `password`.
+   * @param password пароль
+   * @param hashed хеш пароля
+   * @throws WrongPassword если пароли не совпадают
+   */
+  const validatePassword = async (
+    password: string,
+    hashed: string
+  ): Promise<string | { error: string }> => {
+    const result = await bcrypt.compare(password, hashed)
+    if (!result) {
+      return {
+        error: 'Неверный пароль!'
+      }
     }
   }
 
