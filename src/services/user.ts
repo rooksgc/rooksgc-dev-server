@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
 const User = require('../database/models').User
-import { validationResult } from 'express-validator'
 import bcrypt from 'bcryptjs'
+import { EmailServiceApi } from '../services/email'
+import { SecretServiceApi, SecretTypes } from '../services/secret'
+import { ServerResponse } from '../types/server'
+import { ValidationServiceApi } from '../services/validation'
 
 export interface UserDTO {
   id: number
@@ -12,65 +15,46 @@ export interface UserDTO {
 }
 
 export enum UserRole {
-  USER = 'user',
-  MODERATOR = 'moderator',
-  ADMIN = 'admin'
-}
-
-export interface UserResponseDTO {
-  id: number
-  name: string
-  email: string
-  password: string
-  role: string
-  is_active: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface UserCreateResponseError {
-  error: string
+  USER = 'USER',
+  MODERATOR = 'MODERATOR',
+  ADMIN = 'ADMIN'
 }
 
 export interface UserServiceApi {
-  findByEmail: (email: string) => Promise<UserResponseDTO>
-  create: (
-    req: Request,
-    res: Response
-  ) => Promise<UserDTO | UserCreateResponseError>
-  findAll: (req: Request, res: Response) => Promise<UserResponseDTO[]>
-  update: (req: Request, res: Response) => Promise<UserResponseDTO>
+  create: (req: Request, res: Response) => Promise<Response<ServerResponse>>
+  findAll: (req: Request, res: Response) => Promise<Response<ServerResponse>>
+  activate: (req: Request, res: Response) => Promise<Response<ServerResponse>>
+  findByEmail: (email: string) => Promise<UserDTO>
 }
 
-const UserService = (): UserServiceApi => {
+export interface UserServiceDeps {
+  secretService: SecretServiceApi
+  emailService: EmailServiceApi
+  validationService: ValidationServiceApi
+}
+
+const UserService = ({
+  secretService,
+  emailService,
+  validationService
+}: UserServiceDeps): UserServiceApi => {
   const create = async (
     req: Request,
     res: Response
-  ): Promise<UserDTO | UserCreateResponseError> => {
+  ): Promise<Response<ServerResponse>> => {
     try {
-      // 3 Запись в Secrets записи с новым сгенерированным секретом (public_code)
-      //   и secret_type = SecretTypes.EMAIL_CONFIRMATION для used_id = id юзера
-      // 4 Отсылка письма на email юзера со ссылкой для активации
-
-      let { name, email, password } = req.body
-
-      const errors = validationResult(req)
-
-      name = name.trim()
-      email = email.trim()
-      password = password.trim()
-
-      if (!errors.isEmpty()) {
-        console.log('Validation errors: ', errors)
-        res.status(400).json({ errors: errors.array() })
+      const { name, email, password } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        return res.status(400).json({ type: 'error', message })
       }
 
       const foundedUser = await findByEmail(email)
       if (foundedUser) {
-        res.status(409).json({
-          error: `Email ${foundedUser.email} уже существует!`
+        return res.status(409).json({
+          type: 'error',
+          message: `Email ${foundedUser.email} уже существует!`
         })
-        return
       }
 
       const hashedPassword = await hashPassword(password)
@@ -79,77 +63,123 @@ const UserService = (): UserServiceApi => {
         name,
         email,
         password: hashedPassword,
-        role: 'user',
+        role: UserRole.USER,
         is_active: false
       })
 
-      // 1
-      // const secret = await tx.secretService.create(user.id, SecretTypes.emailConformation);
+      const secret = await secretService.create(
+        newUser.id,
+        SecretTypes.EMAIL_CONFIRMATION
+      )
 
-      // 2 отправка e-mail в том числе и как средство проверки валидности email
-      // await this.emailService.confirmEmail(email, name, secret.publicCode);
+      await emailService.confirmEmail(email, name, secret.public_code)
 
       const userDTO = newUser.dataValues
       delete userDTO.password
 
-      res.status(201).json(userDTO)
+      return res.status(201).json({
+        type: 'success',
+        message: `Пользователь создан. Активируйте свой аккаунт, выполнив переход по ссылке из письма, которое выслано на адрес: ${email}`,
+        data: userDTO
+      })
     } catch (error) {
-      res.status(400).json(error)
+      return res.status(400).json({ type: 'error', message: error.message })
     }
   }
 
   const findAll = async (
     req: Request,
     res: Response
-  ): Promise<UserResponseDTO[]> => {
+  ): Promise<Response<ServerResponse>> => {
     try {
       const allUsers = await User.findAll()
-      res.status(201).json(allUsers)
-
-      return allUsers
-    } catch (e) {
-      console.log(e)
-      res.status(500).json(e)
+      return res.status(201).json({ type: 'success', data: allUsers })
+    } catch (error) {
+      return res.status(500).json({ type: 'error', message: error.message })
     }
   }
 
-  const update = async (
+  const activate = async (
     req: Request,
     res: Response
-  ): Promise<UserResponseDTO> => {
+  ): Promise<Response<ServerResponse>> => {
     try {
-      const { id, email } = req.body
-      const foundedUser = await User.find({
-        id
-      })
-      if (foundedUser) {
-        const updatedUser = await User.update({
-          email
-        })
-        res.status(201).json(updatedUser)
+      const { code } = req.params
+      const secret = await secretService.findByPublicCode(
+        code,
+        SecretTypes.EMAIL_CONFIRMATION
+      )
 
-        return updatedUser
+      if (secret) {
+        const user = await User.findByPk(secret.user_id)
+        user.is_active = true
+        await user.save()
+
+        await secretService.deleteById(secret.id)
+
+        return res.status(201).json({
+          type: 'success',
+          message:
+            'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'
+        })
       } else {
-        res.status(404).json('Пользователь не найден!')
+        return res.status(404).json({
+          type: 'error',
+          message:
+            'Ошибка активации пользователя. Попробуйте повторить операцию восстановления пароля.'
+        })
       }
-    } catch (e) {
-      console.log(e)
-      res.status(500).json(e)
+    } catch (error) {
+      return res.status(500).json({
+        type: 'error',
+        message: error.message
+      })
     }
   }
 
-  const findByEmail = async (email: string): Promise<UserResponseDTO> => {
+  // const update = async (
+  //   req: Request,
+  //   res: Response
+  // ): Promise<UserResponseDTO> => {
+  //   try {
+  //     const { id, email } = req.body
+  //     const foundedUser = await User.find({
+  //       id
+  //     })
+  //     if (foundedUser) {
+  //       const updatedUser = await User.update({
+  //         email
+  //       })
+  //       res.status(201).json(updatedUser)
+
+  //       return updatedUser
+  //     } else {
+  //       res.status(404).json('Пользователь не найден!')
+  //     }
+  //   } catch (e) {
+  //     console.log(e)
+  //     res.status(500).json(e)
+  //   }
+  // }
+
+  /**
+   * Найти пользователя по email
+   * @param {string} email пароль
+   * @throws Error - если email не найден
+   * @return Promise<UserResponseDTO> Объект данных пользователя
+   */
+  const findByEmail = async (email: string): Promise<UserDTO> => {
     try {
       return await User.findOne({ where: { email } })
     } catch (error) {
-      console.log(error)
+      throw new Error('Email пользователя не найден!')
     }
   }
 
   /**
-   * Вычисляет хеш от пароля.
-   * @param password пароль
-   * @return хеш пароля
+   * Вычисляет хеш от пароля
+   * @param {string} password - пароль
+   * @return {Promise<string>} хеш пароля
    */
   const hashPassword = async (password: string): Promise<string> => {
     const salt = await bcrypt.genSalt(10)
@@ -165,20 +195,15 @@ const UserService = (): UserServiceApi => {
   const validatePassword = async (
     password: string,
     hashed: string
-  ): Promise<string | { error: string }> => {
-    const result = await bcrypt.compare(password, hashed)
-    if (!result) {
-      return {
-        error: 'Неверный пароль!'
-      }
-    }
+  ): Promise<boolean> => {
+    return await bcrypt.compare(password, hashed)
   }
 
   return {
     findByEmail,
     create,
     findAll,
-    update
+    activate
   }
 }
 

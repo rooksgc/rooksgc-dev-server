@@ -34,8 +34,8 @@ async function start() {
     console.log('Routes:')
     router.stack.forEach((layer) => {
       const { path } = layer.route
-      const { method, name } = layer.route.stack[0]
-      console.log(` - ${method.toUpperCase()} ${name} => ${API_PATH}${path}`)
+      const { method } = layer.route.stack[0]
+      console.log(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
     })
 
     app.listen(port, () => console.log(`Server listening on port ${port}...`))
