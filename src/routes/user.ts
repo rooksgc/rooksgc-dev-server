@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { userService } from '../services'
+import { authService } from '../services'
+import jwtMiddleware from '../middleware/jwt'
 
-const { findAll, create, activate } = userService
+const { findAll, create, activate, login } = authService
 
 export default (router: Router): void => {
   router.post(
@@ -18,6 +19,12 @@ export default (router: Router): void => {
     create
   ),
     router.patch('/user/activate/:code', activate),
-    router.get('/users', findAll)
+    router.get('/users', jwtMiddleware, findAll),
+    router.post(
+      '/user/login',
+      body('email').trim().isEmail(),
+      body('password').trim(),
+      login
+    )
   // router.put('/user/:userId', update), router.get('/users', findAll)
 }

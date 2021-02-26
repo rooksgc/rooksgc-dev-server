@@ -1,15 +1,15 @@
 import SecretService from './secret'
-import UserService from './user'
+import AuthService from './auth'
 import EmailService from './email'
 import ValidationService from './validation'
 
 const validationService = ValidationService()
 const secretService = SecretService()
 const emailService = EmailService()
-const userService = UserService({
+const authService = AuthService({
   secretService,
   emailService,
   validationService
 })
 
-export { userService, secretService, emailService }
+export { authService, secretService, emailService }

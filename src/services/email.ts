@@ -2,8 +2,12 @@ import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import config from 'config'
 
 export interface EmailServiceApi {
-  confirmEmail: (email: string, name: string, code: string) => Promise<any>
-  passwordChange: (email: string, code: string) => Promise<any>
+  confirmEmail: (
+    email: string,
+    name: string,
+    code: string
+  ) => Promise<SentMessageInfo>
+  passwordChange: (email: string, code: string) => Promise<SentMessageInfo>
 }
 
 const EmailService = (): EmailServiceApi => {

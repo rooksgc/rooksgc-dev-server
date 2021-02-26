@@ -23,8 +23,8 @@ app.use(
 )
 
 app.use(cors({ origin: `${host}:${port}` }))
-app.use(express.json())
 app.use(express.urlencoded())
+app.use(express.json())
 app.use(API_PATH, router)
 
 userRoutes(router)

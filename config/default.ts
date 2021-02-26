@@ -12,7 +12,9 @@ const {
   DEV_EMAIL_PROTOCOL,
   DEV_EMAIL_HOST,
   EMAIL_SENDER_NAME,
-  EMAIL_SENDER_EMAIL
+  EMAIL_SENDER_EMAIL,
+  DEV_JWT_SECRET,
+  JWT_ALGORITHMS
 } = process.env
 
 export default {
@@ -32,5 +34,9 @@ export default {
       name: EMAIL_SENDER_NAME,
       email: EMAIL_SENDER_EMAIL
     }
+  },
+  jwt: {
+    secret: DEV_JWT_SECRET,
+    algorithms: JWT_ALGORITHMS
   }
 }

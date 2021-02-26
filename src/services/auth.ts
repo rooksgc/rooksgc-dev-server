@@ -5,6 +5,8 @@ import { EmailServiceApi } from '../services/email'
 import { SecretServiceApi, SecretTypes } from '../services/secret'
 import { ServerResponse } from '../types/server'
 import { ValidationServiceApi } from '../services/validation'
+import jwt from 'jsonwebtoken'
+import config from 'config'
 
 export interface UserDTO {
   id: number
@@ -20,24 +22,38 @@ export enum UserRole {
   ADMIN = 'ADMIN'
 }
 
-export interface UserServiceApi {
-  create: (req: Request, res: Response) => Promise<Response<ServerResponse>>
-  findAll: (req: Request, res: Response) => Promise<Response<ServerResponse>>
-  activate: (req: Request, res: Response) => Promise<Response<ServerResponse>>
-  findByEmail: (email: string) => Promise<UserDTO>
+type AuthMethodType = (
+  req: Request,
+  res: Response
+) => Promise<Response<ServerResponse>>
+
+export interface AuthServiceApi {
+  create: AuthMethodType
+  findById: (userId: number) => Promise<UserDTO> | null
+  findAll: AuthMethodType
+  activate: AuthMethodType
+  login: AuthMethodType
 }
 
-export interface UserServiceDeps {
+export interface AuthServiceDeps {
   secretService: SecretServiceApi
   emailService: EmailServiceApi
   validationService: ValidationServiceApi
 }
 
-const UserService = ({
+const AuthService = ({
   secretService,
   emailService,
   validationService
-}: UserServiceDeps): UserServiceApi => {
+}: AuthServiceDeps): AuthServiceApi => {
+  const findById = async (userId: number): Promise<UserDTO> | null => {
+    try {
+      return await User.findByPk(userId)
+    } catch (error) {
+      return null
+    }
+  }
+
   const create = async (
     req: Request,
     res: Response
@@ -49,7 +65,7 @@ const UserService = ({
         return res.status(400).json({ type: 'error', message })
       }
 
-      const foundedUser = await findByEmail(email)
+      const foundedUser = await User.findOne({ where: { email } })
       if (foundedUser) {
         return res.status(409).json({
           type: 'error',
@@ -110,25 +126,25 @@ const UserService = ({
         SecretTypes.EMAIL_CONFIRMATION
       )
 
-      if (secret) {
-        const user = await User.findByPk(secret.user_id)
-        user.is_active = true
-        await user.save()
-
-        await secretService.deleteById(secret.id)
-
-        return res.status(201).json({
-          type: 'success',
-          message:
-            'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'
-        })
-      } else {
+      if (!secret) {
         return res.status(404).json({
           type: 'error',
           message:
             'Ошибка активации пользователя. Попробуйте повторить операцию восстановления пароля.'
         })
       }
+
+      const user = await User.findByPk(secret.user_id)
+      user.is_active = true
+      await user.save()
+
+      await secretService.deleteById(secret.id)
+
+      return res.status(201).json({
+        type: 'success',
+        message:
+          'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'
+      })
     } catch (error) {
       return res.status(500).json({
         type: 'error',
@@ -137,42 +153,51 @@ const UserService = ({
     }
   }
 
-  // const update = async (
-  //   req: Request,
-  //   res: Response
-  // ): Promise<UserResponseDTO> => {
-  //   try {
-  //     const { id, email } = req.body
-  //     const foundedUser = await User.find({
-  //       id
-  //     })
-  //     if (foundedUser) {
-  //       const updatedUser = await User.update({
-  //         email
-  //       })
-  //       res.status(201).json(updatedUser)
-
-  //       return updatedUser
-  //     } else {
-  //       res.status(404).json('Пользователь не найден!')
-  //     }
-  //   } catch (e) {
-  //     console.log(e)
-  //     res.status(500).json(e)
-  //   }
-  // }
-
-  /**
-   * Найти пользователя по email
-   * @param {string} email пароль
-   * @throws Error - если email не найден
-   * @return Promise<UserResponseDTO> Объект данных пользователя
-   */
-  const findByEmail = async (email: string): Promise<UserDTO> => {
+  const login = async (
+    req: Request,
+    res: Response
+  ): Promise<Response<ServerResponse>> => {
     try {
-      return await User.findOne({ where: { email } })
+      const { email, password } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        return res.status(400).json({ type: 'error', message })
+      }
+
+      const user = await User.findOne({ where: { email } })
+
+      if (!user) {
+        return res.status(409).json({
+          type: 'error',
+          message: 'Пользователя с таким email не существует!'
+        })
+      } else if (!user.is_active) {
+        return res.status(401).json({
+          type: 'error',
+          message:
+            'Учетная запись не активирована! Воспользуйтесь ссылкой для активации, ранее высланной на Ваш адрес электронной почты.'
+        })
+      }
+
+      const passwordIsValid = await validatePassword(password, user.password)
+
+      if (!passwordIsValid) {
+        return res.status(401).json({
+          type: 'error',
+          message: 'Неверный пароль!'
+        })
+      }
+
+      const jwtSecret = config.get('jwt.secret')
+      const token = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: 120 })
+
+      return res.status(201).json({
+        type: 'success',
+        message: 'Успешный вход в систему!',
+        token
+      })
     } catch (error) {
-      throw new Error('Email пользователя не найден!')
+      return res.status(400).json({ type: 'error', message: error.message })
     }
   }
 
@@ -188,9 +213,9 @@ const UserService = ({
 
   /**
    * Проверяет, что `hashed` является хешем `password`.
-   * @param password пароль
-   * @param hashed хеш пароля
-   * @throws WrongPassword если пароли не совпадают
+   * @param password нехешированный пароль
+   * @param hashed хеш пароля из бд
+   * @returns Promise<boolean> false, если хеши не совпадают
    */
   const validatePassword = async (
     password: string,
@@ -200,11 +225,12 @@ const UserService = ({
   }
 
   return {
-    findByEmail,
     create,
+    findById,
     findAll,
-    activate
+    activate,
+    login
   }
 }
 
-export default UserService
+export default AuthService
