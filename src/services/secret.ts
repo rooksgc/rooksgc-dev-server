@@ -15,7 +15,6 @@ export interface SecretDTO {
 
 export interface SecretServiceApi {
   create: (user_id: string, type: SecretTypes) => Promise<SecretDTO>
-  findById: (id: string) => Promise<SecretDTO>
   findByPublicCode: (
     public_code: string,
     secret_type: SecretTypes
@@ -37,10 +36,6 @@ const SecretService = (): SecretServiceApi => {
     })
   }
 
-  const findById = async (id: string): Promise<SecretDTO> => {
-    return await Secret.findByPk(id)
-  }
-
   const findByPublicCode = async (
     public_code: string,
     secret_type: SecretTypes
@@ -56,7 +51,6 @@ const SecretService = (): SecretServiceApi => {
 
   return {
     create,
-    findById,
     findByPublicCode,
     deleteById
   }

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { NextFunction, Request, Response } from 'express'
 const User = require('../database/models').User
 import bcrypt from 'bcryptjs'
 import { EmailServiceApi } from '../services/email'
@@ -7,13 +7,22 @@ import { ServerResponse } from '../types/server'
 import { ValidationServiceApi } from '../services/validation'
 import jwt from 'jsonwebtoken'
 import config from 'config'
+import {
+  ValidationError,
+  EmailAllreadyExists,
+  InvalidPassword,
+  UserActivationError,
+  EmailDoesNotExist,
+  UserIsNotActivated,
+  SecretNotFound,
+  UserNotFound
+} from '../middleware/errors'
 
 export interface UserDTO {
   id: number
   name: string
   email: string
   role: string
-  is_active: boolean
 }
 
 export enum UserRole {
@@ -24,15 +33,18 @@ export enum UserRole {
 
 type AuthMethodType = (
   req: Request,
-  res: Response
+  res: Response,
+  next?: NextFunction
 ) => Promise<Response<ServerResponse>>
 
 export interface AuthServiceApi {
-  create: AuthMethodType
-  findById: (userId: number) => Promise<UserDTO> | null
+  register: AuthMethodType
   findAll: AuthMethodType
   activate: AuthMethodType
   login: AuthMethodType
+  recover: AuthMethodType
+  checkSecret: AuthMethodType
+  changePassword: AuthMethodType
 }
 
 export interface AuthServiceDeps {
@@ -46,31 +58,21 @@ const AuthService = ({
   emailService,
   validationService
 }: AuthServiceDeps): AuthServiceApi => {
-  const findById = async (userId: number): Promise<UserDTO> | null => {
-    try {
-      return await User.findByPk(userId)
-    } catch (error) {
-      return null
-    }
-  }
-
-  const create = async (
+  const register = async (
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise<Response<ServerResponse>> => {
     try {
       const { name, email, password } = req.body
       const message = validationService.validate(req)
       if (message) {
-        return res.status(400).json({ type: 'error', message })
+        throw new ValidationError(message)
       }
 
       const foundedUser = await User.findOne({ where: { email } })
       if (foundedUser) {
-        return res.status(409).json({
-          type: 'error',
-          message: `Email ${foundedUser.email} уже существует!`
-        })
+        throw new EmailAllreadyExists()
       }
 
       const hashedPassword = await hashPassword(password)
@@ -90,34 +92,32 @@ const AuthService = ({
 
       await emailService.confirmEmail(email, name, secret.public_code)
 
-      const userDTO = newUser.dataValues
-      delete userDTO.password
-
       return res.status(201).json({
         type: 'success',
-        message: `Пользователь создан. Активируйте свой аккаунт, выполнив переход по ссылке из письма, которое выслано на адрес: ${email}`,
-        data: userDTO
+        message: `Пользователь создан. Активируйте свой аккаунт, выполнив переход по ссылке из письма, которое выслано на адрес: ${email}`
       })
     } catch (error) {
-      return res.status(400).json({ type: 'error', message: error.message })
+      next(error)
     }
   }
 
   const findAll = async (
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise<Response<ServerResponse>> => {
     try {
       const allUsers = await User.findAll()
       return res.status(201).json({ type: 'success', data: allUsers })
     } catch (error) {
-      return res.status(500).json({ type: 'error', message: error.message })
+      next(error)
     }
   }
 
   const activate = async (
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise<Response<ServerResponse>> => {
     try {
       const { code } = req.params
@@ -127,11 +127,7 @@ const AuthService = ({
       )
 
       if (!secret) {
-        return res.status(404).json({
-          type: 'error',
-          message:
-            'Ошибка активации пользователя. Попробуйте повторить операцию восстановления пароля.'
-        })
+        throw new UserActivationError()
       }
 
       const user = await User.findByPk(secret.user_id)
@@ -146,46 +142,34 @@ const AuthService = ({
           'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'
       })
     } catch (error) {
-      return res.status(500).json({
-        type: 'error',
-        message: error.message
-      })
+      next(error)
     }
   }
 
   const login = async (
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise<Response<ServerResponse>> => {
     try {
       const { email, password } = req.body
       const message = validationService.validate(req)
       if (message) {
-        return res.status(400).json({ type: 'error', message })
+        throw new ValidationError()
       }
 
       const user = await User.findOne({ where: { email } })
 
       if (!user) {
-        return res.status(409).json({
-          type: 'error',
-          message: 'Пользователя с таким email не существует!'
-        })
+        throw new EmailDoesNotExist()
       } else if (!user.is_active) {
-        return res.status(401).json({
-          type: 'error',
-          message:
-            'Учетная запись не активирована! Воспользуйтесь ссылкой для активации, ранее высланной на Ваш адрес электронной почты.'
-        })
+        throw new UserIsNotActivated()
       }
 
       const passwordIsValid = await validatePassword(password, user.password)
 
       if (!passwordIsValid) {
-        return res.status(401).json({
-          type: 'error',
-          message: 'Неверный пароль!'
-        })
+        throw new InvalidPassword()
       }
 
       const jwtSecret = config.get('jwt.secret')
@@ -194,10 +178,47 @@ const AuthService = ({
       return res.status(201).json({
         type: 'success',
         message: 'Успешный вход в систему!',
-        token
+        token,
+        data: userToDTO(user.dataValues)
       })
     } catch (error) {
-      return res.status(400).json({ type: 'error', message: error.message })
+      next(error)
+    }
+  }
+
+  const recover = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> => {
+    try {
+      const { email } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const user = await User.findOne({ where: { email } })
+
+      if (!user) {
+        throw new EmailDoesNotExist()
+      }
+
+      const { id, email: userEmail } = user
+
+      const secret = await secretService.create(
+        id,
+        SecretTypes.RECOVER_PASSWORD
+      )
+
+      await emailService.passwordChange(userEmail, secret.public_code)
+
+      return res.status(201).json({
+        type: 'success',
+        message: `Ссылка для смены пароля отправлена на email ${userEmail}. Проверьте Вашу почту!`
+      })
+    } catch (error) {
+      next(error)
     }
   }
 
@@ -224,12 +245,94 @@ const AuthService = ({
     return await bcrypt.compare(password, hashed)
   }
 
+  const userToDTO = (user: typeof User): UserDTO => {
+    const userDto = { ...user }
+    delete userDto.password
+    delete userDto.createdAt
+    delete userDto.updatedAt
+    delete userDto.is_active
+    return userDto
+  }
+
+  const checkSecret = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> => {
+    try {
+      const { code, secretType } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const secret = await secretService.findByPublicCode(code, secretType)
+
+      if (!secret) {
+        throw new SecretNotFound()
+      }
+
+      return res.status(201).json({
+        type: 'success'
+      })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // changePassword
+  const changePassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> => {
+    try {
+      const { code, password } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const secret = await secretService.findByPublicCode(
+        code,
+        SecretTypes.RECOVER_PASSWORD
+      )
+
+      if (!secret) {
+        throw new SecretNotFound()
+      }
+
+      await secretService.deleteById(secret.id)
+
+      const { user_id } = secret
+
+      const user = await User.findByPk(user_id)
+
+      if (!user) {
+        throw new UserNotFound()
+      }
+
+      const newPassword = await hashPassword(password)
+      user.password = newPassword
+      await user.save()
+
+      return res.status(201).json({
+        type: 'success',
+        message: 'Пароль успешно изменен!'
+      })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   return {
-    create,
-    findById,
+    register,
     findAll,
     activate,
-    login
+    login,
+    recover,
+    checkSecret,
+    changePassword
   }
 }
 

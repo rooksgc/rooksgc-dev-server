@@ -1,5 +1,6 @@
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import config from 'config'
+import { EmailSendingError } from '../middleware/errors'
 
 export interface EmailServiceApi {
   confirmEmail: (
@@ -40,13 +41,13 @@ const EmailService = (): EmailServiceApi => {
     email: string,
     code: string
   ): Promise<SentMessageInfo> => {
-    const codeUrl = `${baseUrl}/auth/recover/${code}`
+    const codeUrl = `${baseUrl}/auth/change-password/${code}`
     return await send(
       [email],
       'Восстановление пароля',
       `Здравствуйте, Вы или кто-то другой запросили смену пароля.<br>
-Если это сделали вы, то перейдите по <a href="${codeUrl}">ссылке</a>, чтобы восстановить пароль.<br>
-Если это сделали не Вы, то проигнорируйте это письмо.`
+Если это сделали Вы, то перейдите по <a href="${codeUrl}">ссылке</a>, чтобы сменить пароль.<br>
+Если это сделали не Вы, то проигнорируйте это письмо.<br>Внимание! Ссылка является одноразовой, не перезагружайте страницу во время смены пароля.`
     )
   }
 
@@ -66,8 +67,8 @@ const EmailService = (): EmailServiceApi => {
 
     try {
       return await transporter.sendMail(email)
-    } catch (e) {
-      throw new Error('Ошибка отправки письма!')
+    } catch (error) {
+      throw new EmailSendingError()
     }
   }
 

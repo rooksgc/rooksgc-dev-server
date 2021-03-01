@@ -2,7 +2,8 @@ import express, { Router, Request, Response } from 'express'
 import compression from 'compression'
 import config from 'config'
 import cors from 'cors'
-import userRoutes from './routes/user'
+import authRoutes from './routes/auth'
+import errorsMiddleware from './middleware/errors'
 
 const port = config.get('port')
 const host = config.get('host')
@@ -27,7 +28,10 @@ app.use(express.urlencoded())
 app.use(express.json())
 app.use(API_PATH, router)
 
-userRoutes(router)
+// Routes
+authRoutes(router)
+
+app.use(errorsMiddleware)
 
 async function start() {
   try {
