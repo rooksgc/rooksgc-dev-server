@@ -54,6 +54,11 @@ export class UserNotFound extends Error {
   readonly message = 'Пользователь не найден'
 }
 
+export class UserFetchByTokenError extends Error {
+  private readonly statusCode = 401
+  readonly message = 'Не удалось получить пользователя по токену'
+}
+
 const errorMiddleware = (err, req, res, next) => {
   const type = err.type || ERROR_DEFAULT_TYPE
   const message = err.message || ERROR_DEFAULT_MESSAGE

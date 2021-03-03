@@ -10,7 +10,8 @@ const {
   login,
   recover,
   checkSecret,
-  changePassword
+  changePassword,
+  fetchByToken
 } = authService
 
 export default (router: Router): void => {
@@ -46,8 +47,10 @@ export default (router: Router): void => {
       body('code').trim().isString(),
       body('password').trim(),
       changePassword
+    ),
+    router.post(
+      '/auth/fetch-by-token',
+      body('token').trim().isString(),
+      fetchByToken
     )
-  // router.put('/auth/user/:userId', update), router.get('/auth/users', findAll)
 }
-
-// change-password

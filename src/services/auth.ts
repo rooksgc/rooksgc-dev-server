@@ -15,7 +15,8 @@ import {
   EmailDoesNotExist,
   UserIsNotActivated,
   SecretNotFound,
-  UserNotFound
+  UserNotFound,
+  UserFetchByTokenError
 } from '../middleware/errors'
 
 export interface UserDTO {
@@ -23,6 +24,12 @@ export interface UserDTO {
   name: string
   email: string
   role: string
+}
+
+export interface ExtractedTokenPayload {
+  userId: number
+  iat: number
+  exp: number
 }
 
 export enum UserRole {
@@ -45,6 +52,7 @@ export interface AuthServiceApi {
   recover: AuthMethodType
   checkSecret: AuthMethodType
   changePassword: AuthMethodType
+  fetchByToken: AuthMethodType
 }
 
 export interface AuthServiceDeps {
@@ -173,7 +181,9 @@ const AuthService = ({
       }
 
       const jwtSecret = config.get('jwt.secret')
-      const token = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: 120 })
+      const token = jwt.sign({ userId: user.id }, jwtSecret, {
+        expiresIn: '24h'
+      })
 
       return res.status(201).json({
         type: 'success',
@@ -325,6 +335,45 @@ const AuthService = ({
     }
   }
 
+  // Fetch by token
+  const fetchByToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> => {
+    try {
+      const { token } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const secret = config.get('jwt.secret')
+      let data: ExtractedTokenPayload | null = null
+
+      jwt.verify(token, secret, (err, payload) => {
+        if (err) {
+          throw new UserFetchByTokenError()
+        } else {
+          data = payload
+        }
+      })
+
+      const { userId } = data
+      const user = await User.findByPk(userId)
+
+      if (!user) {
+        throw new UserNotFound()
+      }
+
+      return res
+        .status(201)
+        .json({ type: 'success', data: userToDTO(user.dataValues) })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   return {
     register,
     findAll,
@@ -332,7 +381,8 @@ const AuthService = ({
     login,
     recover,
     checkSecret,
-    changePassword
+    changePassword,
+    fetchByToken
   }
 }
 
