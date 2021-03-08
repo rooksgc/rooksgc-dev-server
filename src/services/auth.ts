@@ -116,7 +116,8 @@ const AuthService = ({
   ): Promise<Response<ServerResponse>> => {
     try {
       const allUsers = await User.findAll()
-      return res.status(201).json({ type: 'success', data: allUsers })
+      const allUsersDTO = allUsers.map((user) => userToDTO(user.dataValues))
+      return res.status(201).json({ type: 'success', data: allUsersDTO })
     } catch (error) {
       next(error)
     }
@@ -290,7 +291,6 @@ const AuthService = ({
     }
   }
 
-  // changePassword
   const changePassword = async (
     req: Request,
     res: Response,
@@ -335,7 +335,6 @@ const AuthService = ({
     }
   }
 
-  // Fetch by token
   const fetchByToken = async (
     req: Request,
     res: Response,

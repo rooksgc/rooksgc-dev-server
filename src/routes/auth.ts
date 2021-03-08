@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import { authService } from '../services'
-import jwtMiddleware from '../middleware/jwt'
+import authMiddleware from '../middleware/auth'
 
 const {
   findAll,
@@ -15,7 +15,7 @@ const {
 } = authService
 
 export default (router: Router): void => {
-  router.post(
+  router.put(
     '/auth/register',
     body('name').trim(),
     body('email').trim().isEmail(),
@@ -28,7 +28,7 @@ export default (router: Router): void => {
     register
   ),
     router.patch('/auth/activate/:code', activate),
-    router.get('/auth/users', jwtMiddleware, findAll),
+    router.get('/auth/users', authMiddleware, findAll),
     router.post(
       '/auth/login',
       body('email').trim().isEmail(),
