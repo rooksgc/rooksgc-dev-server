@@ -1,3 +1,5 @@
+import { logger } from '../services'
+
 const ERROR_DEFAULT_MESSAGE = 'Internal Server Error'
 const ERROR_DEFAULT_TYPE = 'error'
 const ERROR_DEFAULT_STATUS_CODE = 500
@@ -63,6 +65,9 @@ const errorMiddleware = (err, req, res, next) => {
   const type = err.type || ERROR_DEFAULT_TYPE
   const message = err.message || ERROR_DEFAULT_MESSAGE
   const statusCode = err.statusCode || ERROR_DEFAULT_STATUS_CODE
+  const ip = req.ip.split(':').pop()
+
+  logger.error(`[${ip}] ${statusCode} ${message}`)
 
   return res.status(statusCode).json({ type, message })
 }
