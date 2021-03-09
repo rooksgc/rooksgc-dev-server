@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 const User = require('../database/models').User
+const sequelize = require('../database/models').sequelize
 import bcrypt from 'bcryptjs'
 import { EmailServiceApi } from '../services/email'
 import { SecretServiceApi, SecretTypes } from '../services/secret'
@@ -78,27 +79,29 @@ const AuthService = ({
         throw new ValidationError(message)
       }
 
-      const foundedUser = await User.findOne({ where: { email } })
-      if (foundedUser) {
-        throw new EmailAllreadyExists()
-      }
+      await sequelize.transaction(async () => {
+        const foundedUser = await User.findOne({ where: { email } })
+        if (foundedUser) {
+          throw new EmailAllreadyExists()
+        }
 
-      const hashedPassword = await hashPassword(password)
+        const hashedPassword = await hashPassword(password)
 
-      const newUser = await User.create({
-        name,
-        email,
-        password: hashedPassword,
-        role: UserRole.USER,
-        is_active: false
+        const newUser = await User.create({
+          name,
+          email,
+          password: hashedPassword,
+          role: UserRole.USER,
+          is_active: false
+        })
+
+        const secret = await secretService.create(
+          newUser.id,
+          SecretTypes.EMAIL_CONFIRMATION
+        )
+
+        await emailService.confirmEmail(email, name, secret.public_code)
       })
-
-      const secret = await secretService.create(
-        newUser.id,
-        SecretTypes.EMAIL_CONFIRMATION
-      )
-
-      await emailService.confirmEmail(email, name, secret.public_code)
 
       return res.status(201).json({
         type: 'success',
@@ -130,20 +133,23 @@ const AuthService = ({
   ): Promise<Response<ServerResponse>> => {
     try {
       const { code } = req.params
-      const secret = await secretService.findByPublicCode(
-        code,
-        SecretTypes.EMAIL_CONFIRMATION
-      )
 
-      if (!secret) {
-        throw new UserActivationError()
-      }
+      await sequelize.transaction(async () => {
+        const secret = await secretService.findByPublicCode(
+          code,
+          SecretTypes.EMAIL_CONFIRMATION
+        )
 
-      const user = await User.findByPk(secret.user_id)
-      user.is_active = true
-      await user.save()
+        if (!secret) {
+          throw new UserActivationError()
+        }
 
-      await secretService.deleteById(secret.id)
+        const user = await User.findByPk(secret.user_id)
+        user.is_active = true
+        await user.save()
+
+        await secretService.deleteById(secret.id)
+      })
 
       return res.status(201).json({
         type: 'success',
@@ -168,7 +174,6 @@ const AuthService = ({
       }
 
       const user = await User.findOne({ where: { email } })
-
       if (!user) {
         throw new EmailDoesNotExist()
       } else if (!user.is_active) {
@@ -176,7 +181,6 @@ const AuthService = ({
       }
 
       const passwordIsValid = await validatePassword(password, user.password)
-
       if (!passwordIsValid) {
         throw new InvalidPassword()
       }
@@ -209,20 +213,22 @@ const AuthService = ({
         throw new ValidationError()
       }
 
-      const user = await User.findOne({ where: { email } })
+      const userEmail = await sequelize.transaction(async () => {
+        const user = await User.findOne({ where: { email } })
+        if (!user) {
+          throw new EmailDoesNotExist()
+        }
 
-      if (!user) {
-        throw new EmailDoesNotExist()
-      }
+        const { id, email: userEmail } = user
+        const secret = await secretService.create(
+          id,
+          SecretTypes.RECOVER_PASSWORD
+        )
 
-      const { id, email: userEmail } = user
+        await emailService.passwordChange(userEmail, secret.public_code)
 
-      const secret = await secretService.create(
-        id,
-        SecretTypes.RECOVER_PASSWORD
-      )
-
-      await emailService.passwordChange(userEmail, secret.public_code)
+        return userEmail
+      })
 
       return res.status(201).json({
         type: 'success',
@@ -278,7 +284,6 @@ const AuthService = ({
       }
 
       const secret = await secretService.findByPublicCode(code, secretType)
-
       if (!secret) {
         throw new SecretNotFound()
       }
@@ -303,28 +308,28 @@ const AuthService = ({
         throw new ValidationError()
       }
 
-      const secret = await secretService.findByPublicCode(
-        code,
-        SecretTypes.RECOVER_PASSWORD
-      )
+      await sequelize.transaction(async () => {
+        const secret = await secretService.findByPublicCode(
+          code,
+          SecretTypes.RECOVER_PASSWORD
+        )
 
-      if (!secret) {
-        throw new SecretNotFound()
-      }
+        if (!secret) {
+          throw new SecretNotFound()
+        }
 
-      await secretService.deleteById(secret.id)
+        await secretService.deleteById(secret.id)
 
-      const { user_id } = secret
+        const { user_id } = secret
+        const user = await User.findByPk(user_id)
+        if (!user) {
+          throw new UserNotFound()
+        }
 
-      const user = await User.findByPk(user_id)
-
-      if (!user) {
-        throw new UserNotFound()
-      }
-
-      const newPassword = await hashPassword(password)
-      user.password = newPassword
-      await user.save()
+        const newPassword = await hashPassword(password)
+        user.password = newPassword
+        await user.save()
+      })
 
       return res.status(201).json({
         type: 'success',
@@ -360,7 +365,6 @@ const AuthService = ({
 
       const { userId } = data
       const user = await User.findByPk(userId)
-
       if (!user) {
         throw new UserNotFound()
       }

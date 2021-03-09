@@ -57,6 +57,7 @@
     "@types/jsonwebtoken": "^8.5.0",
     "@types/nodemailer": "^6.4.0",
     "bcryptjs": "^2.4.3",
+    "cls-hooked": "^4.2.2",
     "compression": "^1.7.4",
     "config": "^3.3.3",
     "cors": "^2.8.5",
