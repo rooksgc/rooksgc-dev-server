@@ -5,7 +5,10 @@
       "script": "./src/index.ts",
       "watch": ["./src"],
       "instances": 0,
-      "exec_mode": "fork"
+      "exec_mode": "fork",
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   ]
 }
