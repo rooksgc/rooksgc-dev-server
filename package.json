@@ -71,7 +71,8 @@
     "pg-hstore": "^2.3.3",
     "sequelize": "^6.5.0",
     "sequelize-typescript": "^2.1.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "@types/express": "^4.17.11",
