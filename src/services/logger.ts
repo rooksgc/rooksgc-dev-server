@@ -11,9 +11,9 @@ const LoggerService = (): Logger => {
   )
 
   const logger = createLogger({
-    level: 'info',
     transports: [
       new transports.File({
+        level: 'error',
         filename: 'logs/errors.log',
         handleExceptions: true,
         format: logFormat
@@ -35,4 +35,4 @@ const LoggerService = (): Logger => {
   return logger
 }
 
-export default LoggerService
+export default LoggerService()

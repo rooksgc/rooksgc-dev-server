@@ -1,6 +1,6 @@
 {
   "name": "rooksgc-dev-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Express server for API calls",
   "repository": {
     "type": "git",
@@ -9,46 +9,75 @@
   "main": "src/index.ts",
   "scripts": {
     "start": "cross-env NODE_ENV=production ts-node src/index.ts",
-    "dev": "cross-env NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec ts-node src/index.ts",
+    "dev": "cross-env NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.test.ts' --exec ts-node src/index.ts",
     "test": "jest --forceExit --coverage --verbose",
-    "lint": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
+    "lint": "tsc --noEmit && eslint . --ext .js,.ts",
+    "lint:fix": "tsc --noEmit && eslint . --fix --ext .js,.ts",
     "db:migrate:dev": "cross-env NODE_ENV=development sequelize-cli db:migrate",
     "db:migrate:prod": "cross-env NODE_ENV=production sequelize-cli db:migrate",
     "db:seeds:dev": "cross-env NODE_ENV=development sequelize-cli db:seed:all",
     "db:seeds:prod": "cross-env NODE_ENV=production sequelize-cli db:seed:all",
     "db:create": "sequelize-cli db:create",
-    "db:g:seed": "sequelize-cli seed:generate --seed-name"
+    "db:g:seed": "sequelize-cli seed:generate --seed-name",
+    "prepare": "husky install"
   },
   "author": "Shestakov Anton<rooksgc@gmail.com>",
   "license": "MIT",
+  "prettier": {
+    "trailingComma": "none",
+    "tabWidth": 2,
+    "semi": false,
+    "singleQuote": true,
+    "endOfLine": "auto"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest": {
+        "tsconfig": "tsconfig.json"
+      }
+    },
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/test/**/*.test.(ts|js)"
+    ],
+    "testEnvironment": "node"
+  },
   "eslintConfig": {
-    "parser": "@typescript-eslint/parser",
     "extends": [
-      "plugin:@typescript-eslint/recommended"
+      "airbnb-base-typescript-prettier"
+    ],
+    "env": {
+      "commonjs": true,
+      "es6": true,
+      "node": true
+    },
+    "plugins": [
+      "prettier"
     ],
     "parserOptions": {
+      "project": "./tsconfig.json",
       "ecmaVersion": 2018,
       "sourceType": "module"
     },
+    "globals": {
+      "Atomics": "readonly",
+      "SharedArrayBuffer": "readonly"
+    },
     "rules": {
-      "semi": [
-        "error",
-        "never"
-      ],
-      "quotes": [
-        "error",
-        "single"
-      ],
-      "@typescript-eslint/no-var-requires": "off",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/no-explicit-any": 1,
-      "@typescript-eslint/no-inferrable-types": [
-        "warn",
-        {
-          "ignoreParameters": true
-        }
-      ],
-      "@typescript-eslint/no-unused-vars": "warn"
+      "prettier/prettier": "error",
+      "camelcase": 0,
+      "no-return-await": 0,
+      "max-classes-per-file": 0,
+      "consistent-return": 0,
+      "import/no-dynamic-require": 0,
+      "@typescript-eslint/no-var-requires": 0,
+      "lines-between-class-members": 0
     }
   },
   "dependencies": {
@@ -78,12 +107,14 @@
     "@types/express": "^4.17.11",
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.28",
-    "@typescript-eslint/eslint-plugin": "^4.15.0",
-    "@typescript-eslint/parser": "^4.15.0",
     "cross-env": "^7.0.3",
     "eslint": "^7.20.0",
+    "eslint-config-airbnb-base-typescript-prettier": "^4.1.0",
+    "eslint-plugin-import": "^2.22.1",
+    "husky": "^5.1.3",
     "jest": "^26.6.3",
     "nodemon": "^2.0.7",
+    "prettier": "^2.2.1",
     "sequelize-cli": "^6.2.0",
     "ts-jest": "^26.5.1",
     "ts-node": "^9.1.1",

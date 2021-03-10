@@ -4,6 +4,7 @@ import config from 'config'
 import cors from 'cors'
 import authRoutes from './routes/auth'
 import errorsMiddleware from './middleware/errors'
+import logger from './services/logger'
 
 const port = config.get('port')
 const host = config.get('host')
@@ -35,16 +36,16 @@ app.use(errorsMiddleware)
 
 async function start() {
   try {
-    console.log('Routes:')
+    logger.info('Routes:')
     router.stack.forEach((layer) => {
       const { path } = layer.route
       const { method } = layer.route.stack[0]
-      console.log(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
+      logger.info(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
     })
 
-    app.listen(port, () => console.log(`Server listening on port ${port}...`))
+    app.listen(port, () => logger.info(`Server listening on port ${port}...`))
   } catch (error) {
-    console.log('Server error: ', error.message)
+    logger.info('Server error: ', error.message)
     process.exit(1)
   }
 }

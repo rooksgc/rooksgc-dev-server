@@ -1,4 +1,5 @@
 import { Request } from 'express'
+
 const { validationResult } = require('express-validator')
 
 interface ExpressValidatorResponse {

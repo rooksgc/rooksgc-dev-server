@@ -1,13 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
-const User = require('../database/models').User
-const sequelize = require('../database/models').sequelize
 import bcrypt from 'bcryptjs'
-import { EmailServiceApi } from '../services/email'
-import { SecretServiceApi, SecretTypes } from '../services/secret'
-import { ServerResponse } from '../types/server'
-import { ValidationServiceApi } from '../services/validation'
 import jwt from 'jsonwebtoken'
 import config from 'config'
+import { EmailServiceApi } from './email'
+import { SecretServiceApi, SecretTypes } from './secret'
+import { ServerResponse } from '../types/server'
+import { ValidationServiceApi } from './validation'
 import {
   ValidationError,
   EmailAllreadyExists,
@@ -18,7 +16,10 @@ import {
   SecretNotFound,
   UserNotFound,
   UserFetchByTokenError
-} from '../middleware/errors'
+} from './errors'
+
+const { User } = require('../database/models')
+const { sequelize } = require('../database/models')
 
 export interface UserDTO {
   id: number
@@ -67,6 +68,38 @@ const AuthService = ({
   emailService,
   validationService
 }: AuthServiceDeps): AuthServiceApi => {
+  const userToDTO = (user: typeof User): UserDTO => {
+    const userDto = { ...user }
+    delete userDto.password
+    delete userDto.createdAt
+    delete userDto.updatedAt
+    delete userDto.is_active
+    return userDto
+  }
+
+  /**
+   * Вычисляет хеш от пароля
+   * @param {string} password - пароль
+   * @return {Promise<string>} хеш пароля
+   */
+  const hashPassword = async (password: string): Promise<string> => {
+    const salt = await bcrypt.genSalt(10)
+    return bcrypt.hash(password, salt)
+  }
+
+  /**
+   * Проверяет, что `hashed` является хешем `password`.
+   * @param password нехешированный пароль
+   * @param hashed хеш пароля из бд
+   * @returns Promise<boolean> false, если хеши не совпадают
+   */
+  const validatePassword = async (
+    password: string,
+    hashed: string
+  ): Promise<boolean> => {
+    return bcrypt.compare(password, hashed)
+  }
+
   const register = async (
     req: Request,
     res: Response,
@@ -219,15 +252,15 @@ const AuthService = ({
           throw new EmailDoesNotExist()
         }
 
-        const { id, email: userEmail } = user
+        const { id, email: emailAddress } = user
         const secret = await secretService.create(
           id,
           SecretTypes.RECOVER_PASSWORD
         )
 
-        await emailService.passwordChange(userEmail, secret.public_code)
+        await emailService.passwordChange(emailAddress, secret.public_code)
 
-        return userEmail
+        return emailAddress
       })
 
       return res.status(201).json({
@@ -237,38 +270,6 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
-
-  /**
-   * Вычисляет хеш от пароля
-   * @param {string} password - пароль
-   * @return {Promise<string>} хеш пароля
-   */
-  const hashPassword = async (password: string): Promise<string> => {
-    const salt = await bcrypt.genSalt(10)
-    return await bcrypt.hash(password, salt)
-  }
-
-  /**
-   * Проверяет, что `hashed` является хешем `password`.
-   * @param password нехешированный пароль
-   * @param hashed хеш пароля из бд
-   * @returns Promise<boolean> false, если хеши не совпадают
-   */
-  const validatePassword = async (
-    password: string,
-    hashed: string
-  ): Promise<boolean> => {
-    return await bcrypt.compare(password, hashed)
-  }
-
-  const userToDTO = (user: typeof User): UserDTO => {
-    const userDto = { ...user }
-    delete userDto.password
-    delete userDto.createdAt
-    delete userDto.updatedAt
-    delete userDto.is_active
-    return userDto
   }
 
   const checkSecret = async (
