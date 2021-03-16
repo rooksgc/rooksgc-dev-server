@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { authService } from '../services'
+import authService from '../services/auth'
 import authMiddleware from '../middleware/auth'
 
 const {
