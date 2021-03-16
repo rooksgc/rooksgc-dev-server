@@ -113,7 +113,7 @@ const AuthService: AuthServiceApi = {
           throw new EmailAllreadyExists()
         }
 
-        const hashedPassword = await this.hashPassword(password)
+        const hashedPassword = await AuthService.hashPassword(password)
 
         const newUser = await User.create({
           name,
@@ -148,7 +148,7 @@ const AuthService: AuthServiceApi = {
     try {
       const allUsers = await User.findAll()
       const allUsersDTO = allUsers.map((user) =>
-        this.userToDTO(user.dataValues)
+        AuthService.userToDTO(user.dataValues)
       )
       return res.status(201).json({ type: 'success', data: allUsersDTO })
     } catch (error) {
@@ -210,7 +210,7 @@ const AuthService: AuthServiceApi = {
         throw new UserIsNotActivated()
       }
 
-      const passwordIsValid = await this.validatePassword(
+      const passwordIsValid = await AuthService.validatePassword(
         password,
         user.password
       )
@@ -227,7 +227,7 @@ const AuthService: AuthServiceApi = {
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
-        data: this.userToDTO(user.dataValues)
+        data: AuthService.userToDTO(user.dataValues)
       })
     } catch (error) {
       next(error)
@@ -327,7 +327,7 @@ const AuthService: AuthServiceApi = {
           throw new UserNotFound()
         }
 
-        const newPassword = await this.hashPassword(password)
+        const newPassword = await AuthService.hashPassword(password)
         user.password = newPassword
         await user.save()
       })
@@ -372,7 +372,7 @@ const AuthService: AuthServiceApi = {
 
       return res
         .status(201)
-        .json({ type: 'success', data: this.userToDTO(user.dataValues) })
+        .json({ type: 'success', data: AuthService.userToDTO(user.dataValues) })
     } catch (error) {
       next(error)
     }
