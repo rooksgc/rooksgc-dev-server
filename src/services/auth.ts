@@ -15,7 +15,8 @@ import {
   UserIsNotActivated,
   SecretNotFound,
   UserNotFound,
-  UserFetchByTokenError
+  UserFetchByTokenError,
+  TokenExpiredError
 } from './errors'
 
 const { User } = require('../database/models')
@@ -220,7 +221,7 @@ const AuthService: AuthServiceApi = {
 
       const jwtSecret = config.get('jwt.secret')
       const token = jwt.sign({ userId: user.id }, jwtSecret, {
-        expiresIn: '24h'
+        expiresIn: '30d'
       })
 
       return res.status(201).json({
@@ -358,7 +359,11 @@ const AuthService: AuthServiceApi = {
 
       jwt.verify(token, secret, (err, payload) => {
         if (err) {
-          throw new UserFetchByTokenError()
+          if (err.name === 'TokenExpiredError') {
+            throw new TokenExpiredError()
+          } else {
+            throw new UserFetchByTokenError()
+          }
         } else {
           data = payload
         }

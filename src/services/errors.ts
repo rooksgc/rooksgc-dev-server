@@ -29,7 +29,7 @@ export class UserIsNotActivated extends Error {
 }
 
 export class UserActivationError extends Error {
-  private re
+  private readonly statusCode = 401
   readonly message =
     'Ошибка активации пользователя. Попробуйте повторить операцию восстановления пароля.'
 }
@@ -53,4 +53,9 @@ export class UserNotFound extends Error {
 export class UserFetchByTokenError extends Error {
   private readonly statusCode = 401
   readonly message = 'Не удалось получить пользователя по токену'
+}
+
+export class TokenExpiredError extends Error {
+  private readonly statusCode = 401
+  readonly message = 'TokenExpiredError'
 }
