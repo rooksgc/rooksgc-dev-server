@@ -221,7 +221,7 @@ const AuthService: AuthServiceApi = {
 
       const jwtSecret = config.get('jwt.secret')
       const token = jwt.sign({ userId: user.id }, jwtSecret, {
-        expiresIn: '30d'
+        expiresIn: config.get('jwt.expiresIn')
       })
 
       return res.status(201).json({
