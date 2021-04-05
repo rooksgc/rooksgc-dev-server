@@ -16,7 +16,8 @@ import {
   SecretNotFound,
   UserNotFound,
   UserFetchByTokenError,
-  TokenExpiredError
+  TokenExpiredError,
+  JsonWebTokenError
 } from './errors'
 
 const { User } = require('../database/models')
@@ -359,10 +360,13 @@ const AuthService: AuthServiceApi = {
 
       jwt.verify(token, secret, (err, payload) => {
         if (err) {
-          if (err.name === 'TokenExpiredError') {
-            throw new TokenExpiredError()
-          } else {
-            throw new UserFetchByTokenError()
+          switch (err.name) {
+            case 'TokenExpiredError':
+              throw new TokenExpiredError()
+            case 'JsonWebTokenError':
+              throw new JsonWebTokenError()
+            default:
+              throw new UserFetchByTokenError()
           }
         } else {
           data = payload

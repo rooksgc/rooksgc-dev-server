@@ -50,12 +50,17 @@ export class UserNotFound extends Error {
   readonly message = 'Пользователь не найден'
 }
 
-export class UserFetchByTokenError extends Error {
-  private readonly statusCode = 401
-  readonly message = 'Не удалось получить пользователя по токену'
-}
-
 export class TokenExpiredError extends Error {
   private readonly statusCode = 401
   readonly message = 'TokenExpiredError'
+}
+
+export class JsonWebTokenError extends Error {
+  private readonly statusCode = 401
+  readonly message = 'JsonWebTokenError'
+}
+
+export class UserFetchByTokenError extends Error {
+  private readonly statusCode = 401
+  readonly message = 'Не удалось получить пользователя по токену'
 }
