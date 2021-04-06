@@ -17,8 +17,6 @@ const app = express()
 const router = Router()
 const server = createServer(app)
 const io = new Server(server, {
-  transports: ['websocket'],
-  allowUpgrades: false,
   pingInterval: 30000,
   pingTimeout: 60000
 })
