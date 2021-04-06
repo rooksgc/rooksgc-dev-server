@@ -1,4 +1,5 @@
 import { Server } from 'socket.io'
+import logger from './logger'
 
 const useSockets = (io: Server): void => {
   io.on('connection', (socket) => {
@@ -27,9 +28,13 @@ const useSockets = (io: Server): void => {
       console.log(`Client ${id} leaved channel: ${channel}`)
     })
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason: string) => {
+      logger.error(`[${socket.id}] disconnected. Reason:  ${reason}`)
+      // if (socket.io.connecting.indexOf(socket) === -1) {
+      //   socket.connect()
+      // }
       // eslint-disable-next-line no-console
-      console.log('client desconnected!')
+      console.log('Client desconnected!')
     })
   })
 }

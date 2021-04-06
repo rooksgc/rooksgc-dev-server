@@ -1,6 +1,6 @@
 {
   "name": "rooksgc-dev-server",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Express server for API calls",
   "repository": {
     "type": "git",
@@ -22,8 +22,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run lint",
-      "pre-push": "npm test"
+      "pre-commit": "npm run lint"
     }
   },
   "author": "Shestakov Anton<rooksgc@gmail.com>",
