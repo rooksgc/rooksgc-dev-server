@@ -29,7 +29,15 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('disconnect', (reason: string) => {
-      logger.error(`[${socket.id}] disconnected. Reason:  ${reason}`)
+      const date = new Date(Date.now())
+      const hour = date.getHours()
+      const min = date.getMinutes()
+      const sec = date.getSeconds()
+      const ms = date.getMilliseconds()
+
+      logger.error(
+        `[${hour}:${min}:${sec}:${ms}] [${socket.id}] disconnected. Reason:  ${reason}`
+      )
       // if (socket.io.connecting.indexOf(socket) === -1) {
       //   socket.connect()
       // }
