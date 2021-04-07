@@ -7,7 +7,6 @@ const makeDate = () => {
   const min = date.getMinutes()
   const sec = date.getSeconds()
   const ms = date.getMilliseconds()
-
   return `${hour}:${min}:${sec}:${ms}`
 }
 
@@ -15,11 +14,11 @@ const useSockets = (io: Server): void => {
   io.on('connection', (socket) => {
     const { id } = socket
     // eslint-disable-next-line no-console
-    logger.error(`[${makeDate()}] ${id} connected`)
+    console.log(`[${makeDate()}] ${id} connected`)
+    // logger.error(`[${makeDate()}] ${id} connected`)
 
     socket.on('channels:subscribe', (channelsList) => {
       if (!Array.isArray(channelsList) && !channelsList.length) return
-
       channelsList.forEach((channel) => {
         socket.join(channel.toString())
       })
@@ -42,9 +41,6 @@ const useSockets = (io: Server): void => {
       logger.error(
         `[${makeDate()}] [${socket.id}] disconnected. Reason:  ${reason}`
       )
-      // if (socket.io.connecting.indexOf(socket) === -1) {
-      //   socket.connect()
-      // }
       // eslint-disable-next-line no-console
       console.log(`${id} desconnected!`)
     })
