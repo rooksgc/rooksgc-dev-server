@@ -16,11 +16,7 @@ const API_PATH = `${config.get('api.prefix')}/${config.get('api.version')}`
 const app = express()
 const router = Router()
 const server = createServer(app)
-const ioConfig = {
-  pingInterval: 25000,
-  pingTimeout: 60000
-}
-const io = new Server(server, ioConfig)
+const io = new Server(server)
 
 useSockets(io)
 
