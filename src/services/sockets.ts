@@ -46,9 +46,6 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('disconnect', (reason: string) => {
-      // if transport error or like that... send info to client
-      socket.emit('disconnection:request')
-
       const date = makeDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
       // eslint-disable-next-line no-console
