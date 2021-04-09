@@ -19,6 +19,7 @@ const useSockets = (io: Server): void => {
     channelsList.forEach((channel) => {
       socket.join(channel.toString())
     })
+
     logger.info(`[${date}] ${id} subscribed to channels`)
   }
 
@@ -45,6 +46,9 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('disconnect', (reason: string) => {
+      // if transport error or like that... send info to client
+      socket.emit('disconnection:request')
+
       const date = makeDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
       // eslint-disable-next-line no-console
