@@ -42,6 +42,23 @@ const useSockets = (io: Server): void => {
       logger.info(`${id} leaved channel: ${channel}`)
     })
 
+    socket.on('reconnecting', () => {
+      // eslint-disable-next-line no-console
+      logger.info(`[${makeDate()}] ${id} reconnecting`)
+    })
+
+    socket.on('reconnect_error', (error) => {
+      // eslint-disable-next-line no-console
+      console.log(`[${makeDate()}] ${id} reconnection`, error)
+      logger.info(`[${makeDate()}] ${id} reconnection error ${error.message}`)
+    })
+
+    socket.on('reconnect_failed', () => {
+      // eslint-disable-next-line no-console
+      console.log(`[${makeDate()}] ${id} reconnection failed`)
+      logger.info(`[${makeDate()}] ${id} reconnection failed`)
+    })
+
     socket.on('disconnect', (reason: string) => {
       const date = makeDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
