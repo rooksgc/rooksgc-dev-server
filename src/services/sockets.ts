@@ -22,11 +22,12 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('channels:subscribe', (channelsList) => {
+      logger.info(`channelsList.length: ${channelsList.length}`)
       if (!Array.isArray(channelsList) && !channelsList.length) return
       channelsList.forEach((channel) => {
         socket.join(channel.toString())
-        logger.info(`[${makeDate()}] ${id} subscribed to channel ${channel}`)
       })
+      logger.info(`[${makeDate()}] ${id} subscribed to channels`)
     })
 
     socket.on('channel:message:add', ({ activeChannelId, message }) => {
@@ -47,10 +48,8 @@ const useSockets = (io: Server): void => {
     socket.on('disconnect', (reason: string) => {
       const date = makeDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
-      socket.emit('server:disconnect', { message })
-      logger.info(message)
       // eslint-disable-next-line no-console
-      console.log(`${id} desconnected!`)
+      console.log(message)
     })
   })
 }
