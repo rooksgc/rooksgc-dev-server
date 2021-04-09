@@ -13,6 +13,12 @@ const LoggerService = (): Logger => {
   const logger = createLogger({
     transports: [
       new transports.File({
+        level: 'info',
+        filename: 'logs/info.log',
+        handleExceptions: true,
+        format: logFormat
+      }),
+      new transports.File({
         level: 'error',
         filename: 'logs/errors.log',
         handleExceptions: true,

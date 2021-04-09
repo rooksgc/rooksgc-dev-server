@@ -6,7 +6,6 @@ import config from 'config'
 import cors from 'cors'
 import authRoutes from './routes/auth'
 import errorsMiddleware from './middleware/errors'
-import logger from './services/logger'
 import useSockets from './services/sockets'
 
 const port = config.get('port')
@@ -16,7 +15,11 @@ const API_PATH = `${config.get('api.prefix')}/${config.get('api.version')}`
 const app = express()
 const router = Router()
 const server = createServer(app)
-const io = new Server(server)
+
+const ioConfig = {
+  upgradeTimeout: 30000
+}
+const io = new Server(server, ioConfig)
 
 useSockets(io)
 
@@ -43,18 +46,22 @@ app.use(errorsMiddleware)
 
 async function start() {
   try {
-    logger.info('Routes:')
+    // eslint-disable-next-line no-console
+    console.log('Routes:')
     router.stack.forEach((layer) => {
       const { path } = layer.route
       const { method } = layer.route.stack[0]
-      logger.info(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
+      // eslint-disable-next-line no-console
+      console.log(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
     })
 
     server.listen(port, () =>
-      logger.info(`Server listening on port ${port}...`)
+      // eslint-disable-next-line no-console
+      console.log(`Server listening on port ${port}...`)
     )
   } catch (error) {
-    logger.info('Server error: ', error.message)
+    // eslint-disable-next-line no-console
+    console.error('Server error: ', error.message)
     process.exit(1)
   }
 }

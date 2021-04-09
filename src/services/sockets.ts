@@ -15,12 +15,17 @@ const useSockets = (io: Server): void => {
     const { id } = socket
     // eslint-disable-next-line no-console
     console.log(`[${makeDate()}] ${id} connected`)
-    // logger.error(`[${makeDate()}] ${id} connected`)
+    logger.info(`[${makeDate()}] ${id} connected`)
+    socket.emit('server:connected', {
+      id,
+      message: `${id} connecned to server`
+    })
 
     socket.on('channels:subscribe', (channelsList) => {
       if (!Array.isArray(channelsList) && !channelsList.length) return
       channelsList.forEach((channel) => {
         socket.join(channel.toString())
+        logger.info(`[${makeDate()}] ${id} subscribed to channel ${channel}`)
       })
     })
 
@@ -29,18 +34,23 @@ const useSockets = (io: Server): void => {
         activeChannelId,
         message
       })
+      logger.info(`[${makeDate()}] ${id} writes: ${message}`)
     })
 
     socket.on('channel:leave', (channel) => {
       socket.leave(channel)
       // eslint-disable-next-line no-console
       console.log(`${id} leaved channel: ${channel}`)
+      logger.info(`${id} leaved channel: ${channel}`)
     })
 
     socket.on('disconnect', (reason: string) => {
-      logger.error(
-        `[${makeDate()}] [${socket.id}] disconnected. Reason:  ${reason}`
-      )
+      const date = makeDate()
+      socket.emit('server:disconnect', {
+        id,
+        message: `[${date}] ${id} disconnected: ${reason}`
+      })
+      logger.info(`[${date}] [${socket.id}] disconnected. Reason:  ${reason}`)
       // eslint-disable-next-line no-console
       console.log(`${id} desconnected!`)
     })
