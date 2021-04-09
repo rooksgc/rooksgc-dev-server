@@ -16,13 +16,6 @@ const app = express()
 const router = Router()
 const server = createServer(app)
 
-const ioConfig = {
-  upgradeTimeout: 30000
-}
-const io = new Server(server, ioConfig)
-
-useSockets(io)
-
 app.use(
   compression({
     filter: (req: Request, res: Response) => {
@@ -41,6 +34,10 @@ app.use(API_PATH, router)
 
 // Routes
 authRoutes(router)
+
+// Sockets
+const io = new Server(server)
+useSockets(io)
 
 app.use(errorsMiddleware)
 

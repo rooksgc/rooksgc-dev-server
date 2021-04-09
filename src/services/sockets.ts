@@ -15,17 +15,17 @@ const useSockets = (io: Server): void => {
     const { id } = socket
     const date = makeDate()
 
-    logger.info(`[${date}] ${id} channelsList.length: ${channelsList.length}`)
-
     if (!Array.isArray(channelsList) && !channelsList.length) return
     channelsList.forEach((channel) => {
       socket.join(channel.toString())
     })
     logger.info(`[${date}] ${id} subscribed to channels`)
   }
+
   io.on('connection', (socket) => {
     const { id } = socket
     logger.info(`[${makeDate()}] ${id} connected`)
+    socket.emit('channels:subscription:request')
 
     socket.on('channels:subscribe', (channelsList) => {
       subscribeToChannels(socket, channelsList)
