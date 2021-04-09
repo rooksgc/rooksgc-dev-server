@@ -22,12 +22,13 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('channels:subscribe', (channelsList) => {
-      logger.info(`channelsList.length: ${channelsList.length}`)
+      const date = makeDate()
+      logger.info(`[${date}] ${id} channelsList.length: ${channelsList.length}`)
       if (!Array.isArray(channelsList) && !channelsList.length) return
       channelsList.forEach((channel) => {
         socket.join(channel.toString())
       })
-      logger.info(`[${makeDate()}] ${id} subscribed to channels`)
+      logger.info(`[${date}] ${id} subscribed to channels`)
     })
 
     socket.on('channel:message:add', ({ activeChannelId, message }) => {
@@ -35,7 +36,7 @@ const useSockets = (io: Server): void => {
         activeChannelId,
         message
       })
-      logger.info(`[${makeDate()}] ${id} writes: ${message}`)
+      logger.info(`[${makeDate()}] ${id} writes: ${message.text}`)
     })
 
     socket.on('channel:leave', (channel) => {
