@@ -16,10 +16,6 @@ const useSockets = (io: Server): void => {
     // eslint-disable-next-line no-console
     console.log(`[${makeDate()}] ${id} connected`)
     logger.info(`[${makeDate()}] ${id} connected`)
-    socket.emit('server:connected', {
-      id,
-      message: `${id} connecned to server`
-    })
 
     socket.on('channels:subscribe', (channelsList) => {
       const date = makeDate()
