@@ -26,7 +26,6 @@ const useSockets = (io: Server): void => {
   io.on('connection', (socket) => {
     const { id } = socket
     logger.info(`[${makeDate()}] ${id} connected`)
-    socket.emit('channels:subscription:request')
 
     socket.on('channels:subscribe', (channelsList) => {
       subscribeToChannels(socket, channelsList)
@@ -48,7 +47,6 @@ const useSockets = (io: Server): void => {
     socket.on('disconnect', (reason: string) => {
       const date = makeDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
-      // eslint-disable-next-line no-console
       logger.info(`[${makeDate()}] ${id} disconnected: ${message}`)
     })
   })
