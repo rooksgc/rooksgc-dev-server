@@ -46,11 +46,9 @@ const useSockets = (io: Server): void => {
 
     socket.on('disconnect', (reason: string) => {
       const date = makeDate()
-      socket.emit('server:disconnect', {
-        id,
-        message: `[${date}] ${id} disconnected: ${reason}`
-      })
-      logger.info(`[${date}] [${socket.id}] disconnected. Reason:  ${reason}`)
+      const message = `[${date}] ${id} disconnected: ${reason}`
+      socket.emit('server:disconnect', { message })
+      logger.info(message)
       // eslint-disable-next-line no-console
       console.log(`${id} desconnected!`)
     })
