@@ -1,15 +1,15 @@
-'use strict'
-
 const fs = require('fs')
 const path = require('path')
 const cls = require('cls-hooked')
+
 const namespace = cls.createNamespace('t1')
 const Sequelize = require('sequelize')
+
 Sequelize.useCLS(namespace)
 
 const basename = path.basename(__filename)
 const env = process.env.NODE_ENV || 'development'
-const config = require(__dirname + '/../config/config.ts')[env]
+const config = require(path.join(__dirname, '/../config/config.ts'))[env]
 const db = {}
 
 let sequelize
@@ -31,6 +31,7 @@ fs.readdirSync(__dirname)
     )
   })
   .forEach((file) => {
+    // eslint-disable-next-line global-require
     const model = require(path.join(__dirname, file))(
       sequelize,
       Sequelize.DataTypes

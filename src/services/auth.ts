@@ -1,24 +1,35 @@
 import { NextFunction, Request, Response } from 'express'
-const User = require('../database/models').User
-const sequelize = require('../database/models').sequelize
 import bcrypt from 'bcryptjs'
-import { EmailServiceApi } from '../services/email'
-import { SecretServiceApi, SecretTypes } from '../services/secret'
-import { ServerResponse } from '../types/server'
-import { ValidationServiceApi } from '../services/validation'
 import jwt from 'jsonwebtoken'
 import config from 'config'
+import secretService, { SecretTypes } from './secret'
+import validationService from './validation'
+import emailService from './email'
+
 import {
   ValidationError,
   EmailAllreadyExists,
+  UserNameAllreadyExists,
   InvalidPassword,
   UserActivationError,
   EmailDoesNotExist,
   UserIsNotActivated,
   SecretNotFound,
   UserNotFound,
-  UserFetchByTokenError
-} from '../middleware/errors'
+  UserFetchByTokenError,
+  TokenExpiredError,
+  JsonWebTokenError
+} from './errors'
+
+const { User } = require('../database/models')
+const { sequelize } = require('../database/models')
+
+export interface ServerResponse {
+  type: string
+  message?: string
+  data?: any
+  token?: string
+}
 
 export interface UserDTO {
   id: number
@@ -46,6 +57,9 @@ type AuthMethodType = (
 ) => Promise<Response<ServerResponse>>
 
 export interface AuthServiceApi {
+  userToDTO(user: typeof User): UserDTO
+  hashPassword(password: string): Promise<string>
+  validatePassword(password: string, hashed: string): Promise<boolean>
   register: AuthMethodType
   findAll: AuthMethodType
   activate: AuthMethodType
@@ -56,22 +70,46 @@ export interface AuthServiceApi {
   fetchByToken: AuthMethodType
 }
 
-export interface AuthServiceDeps {
-  secretService: SecretServiceApi
-  emailService: EmailServiceApi
-  validationService: ValidationServiceApi
-}
+const AuthService: AuthServiceApi = {
+  /**
+   * Убирает лишние поля из объекта пользователя
+   * @param {User} user объект пользователя от БД
+   * @returns {UserDTO} объект для передачи на фронтенд
+   */
+  userToDTO(user: typeof User): UserDTO {
+    const userDto = { ...user }
+    delete userDto.password
+    delete userDto.createdAt
+    delete userDto.updatedAt
+    delete userDto.is_active
+    return userDto
+  },
 
-const AuthService = ({
-  secretService,
-  emailService,
-  validationService
-}: AuthServiceDeps): AuthServiceApi => {
-  const register = async (
+  /**
+   * Вычисляет хеш от пароля
+   * @param {string} password - пароль
+   * @return {Promise<string>} хеш пароля
+   */
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10)
+    return bcrypt.hash(password, salt)
+  },
+
+  /**
+   * Проверяет, что `hashed` является хешем `password`.
+   * @param password нехешированный пароль
+   * @param hashed хеш пароля из бд
+   * @returns Promise<boolean> false, если хеши не совпадают
+   */
+  async validatePassword(password: string, hashed: string): Promise<boolean> {
+    return bcrypt.compare(password, hashed)
+  },
+
+  async register(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { name, email, password } = req.body
       const message = validationService.validate(req)
@@ -80,12 +118,17 @@ const AuthService = ({
       }
 
       await sequelize.transaction(async () => {
-        const foundedUser = await User.findOne({ where: { email } })
-        if (foundedUser) {
+        const foundedByEmail = await User.findOne({ where: { email } })
+        if (foundedByEmail) {
           throw new EmailAllreadyExists()
         }
 
-        const hashedPassword = await hashPassword(password)
+        const foundedByName = await User.findOne({ where: { name } })
+        if (foundedByName) {
+          throw new UserNameAllreadyExists()
+        }
+
+        const hashedPassword = await AuthService.hashPassword(password)
 
         const newUser = await User.create({
           name,
@@ -110,27 +153,29 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const findAll = async (
+  async findAll(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const allUsers = await User.findAll()
-      const allUsersDTO = allUsers.map((user) => userToDTO(user.dataValues))
+      const allUsersDTO = allUsers.map((user) =>
+        AuthService.userToDTO(user.dataValues)
+      )
       return res.status(201).json({ type: 'success', data: allUsersDTO })
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const activate = async (
+  async activate(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { code } = req.params
 
@@ -159,13 +204,13 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const login = async (
+  async login(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { email, password } = req.body
       const message = validationService.validate(req)
@@ -180,32 +225,35 @@ const AuthService = ({
         throw new UserIsNotActivated()
       }
 
-      const passwordIsValid = await validatePassword(password, user.password)
+      const passwordIsValid = await AuthService.validatePassword(
+        password,
+        user.password
+      )
       if (!passwordIsValid) {
         throw new InvalidPassword()
       }
 
       const jwtSecret = config.get('jwt.secret')
       const token = jwt.sign({ userId: user.id }, jwtSecret, {
-        expiresIn: '24h'
+        expiresIn: config.get('jwt.expiresIn')
       })
 
       return res.status(201).json({
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
-        data: userToDTO(user.dataValues)
+        data: AuthService.userToDTO(user.dataValues)
       })
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const recover = async (
+  async recover(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { email } = req.body
       const message = validationService.validate(req)
@@ -219,15 +267,15 @@ const AuthService = ({
           throw new EmailDoesNotExist()
         }
 
-        const { id, email: userEmail } = user
+        const { id, email: emailAddress } = user
         const secret = await secretService.create(
           id,
           SecretTypes.RECOVER_PASSWORD
         )
 
-        await emailService.passwordChange(userEmail, secret.public_code)
+        await emailService.passwordChange(emailAddress, secret.public_code)
 
-        return userEmail
+        return emailAddress
       })
 
       return res.status(201).json({
@@ -237,45 +285,13 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  /**
-   * Вычисляет хеш от пароля
-   * @param {string} password - пароль
-   * @return {Promise<string>} хеш пароля
-   */
-  const hashPassword = async (password: string): Promise<string> => {
-    const salt = await bcrypt.genSalt(10)
-    return await bcrypt.hash(password, salt)
-  }
-
-  /**
-   * Проверяет, что `hashed` является хешем `password`.
-   * @param password нехешированный пароль
-   * @param hashed хеш пароля из бд
-   * @returns Promise<boolean> false, если хеши не совпадают
-   */
-  const validatePassword = async (
-    password: string,
-    hashed: string
-  ): Promise<boolean> => {
-    return await bcrypt.compare(password, hashed)
-  }
-
-  const userToDTO = (user: typeof User): UserDTO => {
-    const userDto = { ...user }
-    delete userDto.password
-    delete userDto.createdAt
-    delete userDto.updatedAt
-    delete userDto.is_active
-    return userDto
-  }
-
-  const checkSecret = async (
+  async checkSecret(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { code, secretType } = req.body
       const message = validationService.validate(req)
@@ -294,13 +310,13 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const changePassword = async (
+  async changePassword(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { code, password } = req.body
       const message = validationService.validate(req)
@@ -326,7 +342,7 @@ const AuthService = ({
           throw new UserNotFound()
         }
 
-        const newPassword = await hashPassword(password)
+        const newPassword = await AuthService.hashPassword(password)
         user.password = newPassword
         await user.save()
       })
@@ -338,13 +354,13 @@ const AuthService = ({
     } catch (error) {
       next(error)
     }
-  }
+  },
 
-  const fetchByToken = async (
+  async fetchByToken(
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<Response<ServerResponse>> => {
+  ): Promise<Response<ServerResponse>> {
     try {
       const { token } = req.body
       const message = validationService.validate(req)
@@ -357,7 +373,14 @@ const AuthService = ({
 
       jwt.verify(token, secret, (err, payload) => {
         if (err) {
-          throw new UserFetchByTokenError()
+          switch (err.name) {
+            case 'TokenExpiredError':
+              throw new TokenExpiredError()
+            case 'JsonWebTokenError':
+              throw new JsonWebTokenError()
+            default:
+              throw new UserFetchByTokenError()
+          }
         } else {
           data = payload
         }
@@ -371,21 +394,10 @@ const AuthService = ({
 
       return res
         .status(201)
-        .json({ type: 'success', data: userToDTO(user.dataValues) })
+        .json({ type: 'success', data: AuthService.userToDTO(user.dataValues) })
     } catch (error) {
       next(error)
     }
-  }
-
-  return {
-    register,
-    findAll,
-    activate,
-    login,
-    recover,
-    checkSecret,
-    changePassword,
-    fetchByToken
   }
 }
 

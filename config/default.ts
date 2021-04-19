@@ -14,7 +14,8 @@ const {
   EMAIL_SENDER_NAME,
   EMAIL_SENDER_EMAIL,
   DEV_JWT_SECRET,
-  JWT_ALGORITHMS
+  JWT_ALGORITHMS,
+  JWT_EXPIRES_IN
 } = process.env
 
 export default {
@@ -37,6 +38,7 @@ export default {
   },
   jwt: {
     secret: DEV_JWT_SECRET,
-    algorithms: JWT_ALGORITHMS
+    algorithms: JWT_ALGORITHMS,
+    expiresIn: JWT_EXPIRES_IN
   }
 }
