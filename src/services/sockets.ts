@@ -1,34 +1,86 @@
-import { Server } from 'socket.io'
+import { Server as HttpServer } from 'http'
+import { Server, Socket } from 'socket.io'
 import logger from './logger'
 
-const makeDate = () => {
-  const date = new Date(Date.now())
-  const hour = date.getHours()
-  const min = date.getMinutes()
-  const sec = date.getSeconds()
-  const ms = date.getMilliseconds()
-  return `${hour}:${min}:${sec}:${ms}`
+interface ISocket extends Socket {
+  username: string
 }
 
-const useSockets = (io: Server): void => {
-  const subscribeToChannels = (socket, channelsList) => {
-    const { id } = socket
-    const date = makeDate()
+const useSockets = (server: HttpServer): void => {
+  const io = new Server(server)
 
-    if (!Array.isArray(channelsList) && !channelsList.length) return
-    channelsList.forEach((channel) => {
-      socket.join(channel.toString())
-    })
+  const formatDate = () => {
+    const date = new Date(Date.now())
+    const hour = date.getHours()
+    const min = date.getMinutes()
+    const sec = date.getSeconds()
+    const ms = date.getMilliseconds()
 
-    logger.info(`[${date}] ${id} subscribed to channels`)
+    return `${hour}:${min}:${sec}:${ms}`
   }
 
-  io.on('connection', (socket) => {
+  const subscribeToChannels = (
+    socket,
+    { userChannelsList, userContactsList }
+  ) => {
     const { id } = socket
-    logger.info(`[${makeDate()}] ${id} connected`)
+    const date = formatDate()
 
-    socket.on('channels:subscribe', (channelsList) => {
-      subscribeToChannels(socket, channelsList)
+    if (Array.isArray(userChannelsList) && userChannelsList.length) {
+      userChannelsList.forEach(({ id: channelId }) => {
+        socket.join(channelId.toString())
+      })
+
+      logger.info(`[${date}] ${id} subscribed to channels`)
+    }
+
+    // todo check how to subscribe to user socket by id
+    if (Array.isArray(userContactsList) && userContactsList.length) {
+      userContactsList.forEach(({ id: contactId }) => {
+        socket.join(contactId.toString())
+      })
+
+      logger.info(`[${date}] ${id} subscribed to contacts`)
+    }
+  }
+
+  io.use((socket: ISocket, next) => {
+    const { username } = socket.handshake.auth
+    if (!username) {
+      return next(new Error('invalid username'))
+    }
+
+    // eslint-disable-next-line no-param-reassign
+    socket.username = username
+    next()
+  })
+
+  io.on('connection', (socket: ISocket) => {
+    const { id } = socket
+    const users = []
+    const connectedSockets = io.of('/').sockets
+
+    // new socket connected
+    logger.info(`[${formatDate()}] ${id} connected`)
+
+    // list of all connected sockets
+    connectedSockets.forEach((item) => {
+      users.push({
+        userId: item.id,
+        username: (item as ISocket).username
+      })
+    })
+    socket.emit('users:connected', users)
+    // eslint-disable-next-line no-console
+    console.log('users:connected', users)
+
+    socket.on('channels:subscribe', (payload) => {
+      subscribeToChannels(socket, payload)
+    })
+
+    socket.broadcast.emit('user:connected', {
+      userID: socket.id,
+      username: socket.username
     })
 
     socket.on('channel:message:add', ({ activeChannelId, message }) => {
@@ -36,7 +88,7 @@ const useSockets = (io: Server): void => {
         activeChannelId,
         message
       })
-      logger.info(`[${makeDate()}] ${id} writes: ${message.text}`)
+      logger.info(`[${formatDate()}] ${id} writes: ${message.text}`)
     })
 
     socket.on('channel:leave', (channel) => {
@@ -45,9 +97,9 @@ const useSockets = (io: Server): void => {
     })
 
     socket.on('disconnect', (reason: string) => {
-      const date = makeDate()
+      const date = formatDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
-      logger.info(`[${makeDate()}] ${id} disconnected: ${message}`)
+      logger.info(`[${formatDate()}] ${id} disconnected: ${message}`)
     })
   })
 }

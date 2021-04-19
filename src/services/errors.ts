@@ -7,6 +7,11 @@ export class EmailAllreadyExists extends Error {
   readonly message = 'Email уже существует! Выберите другой адрес.'
 }
 
+export class UserNameAllreadyExists extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Имя занято! Придумайте другое имя пользователя.'
+}
+
 export class InvalidPassword extends Error {
   private readonly statusCode = 401
   readonly message = 'Неверный пароль!'

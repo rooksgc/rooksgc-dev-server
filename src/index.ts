@@ -1,10 +1,9 @@
 import express, { Router, Request, Response } from 'express'
 import { createServer } from 'http'
-import { Server } from 'socket.io'
 import compression from 'compression'
 import config from 'config'
 import cors from 'cors'
-import authRoutes from './routes/auth'
+import useAuthRoutes from './routes/auth'
 import errorsMiddleware from './middleware/errors'
 import useSockets from './services/sockets'
 
@@ -33,11 +32,9 @@ app.use(express.json())
 app.use(API_PATH, router)
 
 // Routes
-authRoutes(router)
-
+useAuthRoutes(router)
 // Sockets
-const io = new Server(server)
-useSockets(io)
+useSockets(server)
 
 app.use(errorsMiddleware)
 

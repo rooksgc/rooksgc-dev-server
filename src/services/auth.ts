@@ -5,10 +5,11 @@ import config from 'config'
 import secretService, { SecretTypes } from './secret'
 import validationService from './validation'
 import emailService from './email'
-import { ServerResponse } from '../types/server'
+
 import {
   ValidationError,
   EmailAllreadyExists,
+  UserNameAllreadyExists,
   InvalidPassword,
   UserActivationError,
   EmailDoesNotExist,
@@ -22,6 +23,13 @@ import {
 
 const { User } = require('../database/models')
 const { sequelize } = require('../database/models')
+
+export interface ServerResponse {
+  type: string
+  message?: string
+  data?: any
+  token?: string
+}
 
 export interface UserDTO {
   id: number
@@ -110,9 +118,14 @@ const AuthService: AuthServiceApi = {
       }
 
       await sequelize.transaction(async () => {
-        const foundedUser = await User.findOne({ where: { email } })
-        if (foundedUser) {
+        const foundedByEmail = await User.findOne({ where: { email } })
+        if (foundedByEmail) {
           throw new EmailAllreadyExists()
+        }
+
+        const foundedByName = await User.findOne({ where: { name } })
+        if (foundedByName) {
+          throw new UserNameAllreadyExists()
         }
 
         const hashedPassword = await AuthService.hashPassword(password)
