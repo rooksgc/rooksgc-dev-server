@@ -8,6 +8,12 @@ module.exports = (sequelize, DataTypes) => {
         as: 'secrets',
         onDelete: 'CASCADE'
       })
+      User.hasMany(models.Message, {
+        foreignKey: 'user_id',
+        as: 'messages',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+      })
     }
   }
   User.init(
@@ -16,7 +22,9 @@ module.exports = (sequelize, DataTypes) => {
       email: DataTypes.STRING,
       password: DataTypes.STRING,
       role: DataTypes.STRING,
-      is_active: DataTypes.BOOLEAN
+      is_active: DataTypes.BOOLEAN,
+      contacts: DataTypes.STRING,
+      channels: DataTypes.STRING
     },
     {
       sequelize,
