@@ -66,7 +66,7 @@ const useSockets = (server: HttpServer): void => {
 
     updateConnectedUsers(socket)
     socket.emit('users:connected', users)
-    console.log(`new user connected: ${id} (${socket.userId}`, users)
+    // console.log(`new user connected: ${id} (${socket.userId}`, users)
 
     socket.on('channels:subscribe', (payload) => {
       subscribeToChannels(socket, payload)
@@ -103,12 +103,13 @@ const useSockets = (server: HttpServer): void => {
         })
       })
 
-      logger.info(
-        `[${formatDate()}] ${from} to ${to} writes PM: ${message.text}`
-      )
+      // logger.info(
+      //   `[${formatDate()}] ${from} to ${to} writes PM: ${message.text}`
+      // )
     })
 
-    socket.on('disconnect', (reason: string) => {
+    socket.on('disconnect', () => {
+      // reason: string
       const { userId } = socket
 
       if (users.has(userId)) {
@@ -121,11 +122,10 @@ const useSockets = (server: HttpServer): void => {
         }
       }
 
-      const date = formatDate()
-      const message = `[${date}] ${id} disconnected: ${reason}`
-      logger.info(`[${formatDate()}] ${id} disconnected: ${message}`)
-
-      console.log(`user disconnected: ${id} (${userId}`, users)
+      // const date = formatDate()
+      // const message = `[${date}] ${id} disconnected: ${reason}`
+      // logger.info(`[${formatDate()}] ${id} disconnected: ${message}`)
+      // console.log(`user disconnected: ${id} (${userId}`, users)
     })
   })
 }
