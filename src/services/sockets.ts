@@ -3,11 +3,13 @@ import { Server, Socket } from 'socket.io'
 import logger from './logger'
 
 interface ISocket extends Socket {
-  username: string
+  userId: number
 }
 
 const useSockets = (server: HttpServer): void => {
   const io = new Server(server)
+  /** Map userId: Set(socketId`s), example: 12: Set('81mx9384hj', 'd82y297d') */
+  const users = new Map()
 
   const formatDate = () => {
     const date = new Date(Date.now())
@@ -21,85 +23,109 @@ const useSockets = (server: HttpServer): void => {
 
   const subscribeToChannels = (
     socket,
-    { userChannelsList, userContactsList }
+    { userChannelsList } // userContactsList
   ) => {
     const { id } = socket
     const date = formatDate()
-
     if (Array.isArray(userChannelsList) && userChannelsList.length) {
       userChannelsList.forEach(({ id: channelId }) => {
-        socket.join(channelId.toString())
+        socket.join(channelId)
       })
-
       logger.info(`[${date}] ${id} subscribed to channels`)
     }
+  }
 
-    // todo check how to subscribe to user socket by id
-    if (Array.isArray(userContactsList) && userContactsList.length) {
-      userContactsList.forEach(({ id: contactId }) => {
-        socket.join(contactId.toString())
-      })
+  const updateConnectedUsers = (socket) => {
+    // io.of('/').sockets.forEach((sock: ISocket) => {
+    //   if (!users.has(sock.userId)) {
+    //     users.set(sock.userId, new Set(sock.id))
+    //   }
+    // })
 
-      logger.info(`[${date}] ${id} subscribed to contacts`)
+    if (!users.has(socket.userId)) {
+      users.set(socket.userId, new Set([socket.id]))
+    } else {
+      const newSet = users.get(socket.userId).add(socket.id)
+      users.set(socket.userId, newSet)
     }
   }
 
   io.use((socket: ISocket, next) => {
-    const { username } = socket.handshake.auth
-    if (!username) {
-      return next(new Error('invalid username'))
+    const { userId } = socket.handshake.auth
+    if (!userId) {
+      return next(new Error('invalid userId'))
     }
-
     // eslint-disable-next-line no-param-reassign
-    socket.username = username
+    socket.userId = userId
     next()
   })
 
   io.on('connection', (socket: ISocket) => {
     const { id } = socket
-    const users = []
-    const connectedSockets = io.of('/').sockets
-
-    // new socket connected
     logger.info(`[${formatDate()}] ${id} connected`)
 
-    // list of all connected sockets
-    connectedSockets.forEach((item) => {
-      users.push({
-        userId: item.id,
-        username: (item as ISocket).username
-      })
-    })
+    updateConnectedUsers(socket)
     socket.emit('users:connected', users)
-    // eslint-disable-next-line no-console
-    console.log('users:connected', users)
+    console.log(`new user connected: ${id} (${socket.userId}`, users)
 
     socket.on('channels:subscribe', (payload) => {
       subscribeToChannels(socket, payload)
     })
 
     socket.broadcast.emit('user:connected', {
-      userID: socket.id,
-      username: socket.username
+      socketId: socket.id,
+      userId: socket.userId
     })
 
-    socket.on('channel:message:add', ({ activeChannelId, message }) => {
+    socket.on('channel:message:send', ({ activeChannelId, message }) => {
       socket.to(activeChannelId).emit('channel:message:broadcast', {
         activeChannelId,
         message
       })
-      logger.info(`[${formatDate()}] ${id} writes: ${message.text}`)
+      // logger.info(`[${formatDate()}] ${id} writes: ${message.text}`)
     })
 
-    socket.on('channel:leave', (channel) => {
-      socket.leave(channel)
-      logger.info(`${id} leaved channel: ${channel}`)
+    // Private message
+    socket.on('contact:message:send', ({ from, to, message }) => {
+      const userSockets = users.get(to)
+
+      if (!userSockets) {
+        logger.info(
+          `[${formatDate()}] Error: no socketId found for userId ${to} in users array`
+        )
+        return
+      }
+
+      userSockets.forEach((socketId: string) => {
+        socket.to(socketId).emit('contact:message:private', {
+          from,
+          message
+        })
+      })
+
+      logger.info(
+        `[${formatDate()}] ${from} to ${to} writes PM: ${message.text}`
+      )
     })
 
     socket.on('disconnect', (reason: string) => {
+      const { userId } = socket
+
+      if (users.has(userId)) {
+        const currentSet = users.get(userId)
+        if (currentSet.size > 1) {
+          currentSet.delete(id)
+          users.set(userId, currentSet)
+        } else {
+          users.delete(userId)
+        }
+      }
+
       const date = formatDate()
       const message = `[${date}] ${id} disconnected: ${reason}`
       logger.info(`[${formatDate()}] ${id} disconnected: ${message}`)
+
+      console.log(`user disconnected: ${id} (${userId}`, users)
     })
   })
 }
