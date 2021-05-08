@@ -69,3 +69,8 @@ export class UserFetchByTokenError extends Error {
   private readonly statusCode = 401
   readonly message = 'Не удалось получить пользователя по токену'
 }
+
+export class ErrorChannelCreate extends Error {
+  private readonly statusCode = 401
+  readonly message = 'Не удалось получить список каналов пользователя'
+}

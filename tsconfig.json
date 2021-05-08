@@ -1,5 +1,12 @@
 {
   "compilerOptions": {
+    "baseUrl": "src",
+    "paths": {
+      "*": ["src/*"]
+    },
+    "rootDir": "src",
+    "outDir": "build",
+    "typeRoots": ["node_modules/@types"],
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "es2018",
@@ -7,15 +14,8 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "noImplicitAny": false,
-    "rootDir": "./src",
-    "outDir": "./build",
-    "baseUrl": ".",
-    "typeRoots": ["node_modules/@types", "src/types/*"],
-    "paths": {
-      "*": ["node_modules/*", "src/types/*"]
-    }
+    "noImplicitAny": false
   },
   "exclude": ["node_modules", "build"],
-  "include": ["src/**/*"]
+  "include": ["src"]
 }

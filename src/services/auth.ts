@@ -36,6 +36,8 @@ export interface UserDTO {
   name: string
   email: string
   role: string
+  channels: string
+  contacts: string
 }
 
 export interface ExtractedTokenPayload {
@@ -68,6 +70,7 @@ export interface AuthServiceApi {
   checkSecret: AuthMethodType
   changePassword: AuthMethodType
   fetchByToken: AuthMethodType
+  findById(userId: number): Promise<typeof User>
 }
 
 const AuthService: AuthServiceApi = {
@@ -189,7 +192,7 @@ const AuthService: AuthServiceApi = {
           throw new UserActivationError()
         }
 
-        const user = await User.findByPk(secret.user_id)
+        const user = await User(secret.user_id)
         user.is_active = true
         await user.save()
 
@@ -398,6 +401,10 @@ const AuthService: AuthServiceApi = {
     } catch (error) {
       next(error)
     }
+  },
+
+  async findById(userId: number) {
+    return await User.findByPk(userId)
   }
 }
 

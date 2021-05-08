@@ -6,8 +6,22 @@ interface ISocket extends Socket {
   userId: number
 }
 
-const useSockets = (server: HttpServer): void => {
+const WebSocketService = (server: HttpServer): void => {
   const io = new Server(server)
+
+  // Namespaces
+  const chat = io.of('/chat')
+
+  chat.use((socket: ISocket, next) => {
+    const { userId } = socket.handshake.auth
+    if (!userId) {
+      return next(new Error('invalid userId'))
+    }
+    // eslint-disable-next-line no-param-reassign
+    socket.userId = userId
+    next()
+  })
+
   /** Map userId: Set(socketId`s), example: 12: Set('81mx9384hj', 'd82y297d') */
   const users = new Map()
 
@@ -21,27 +35,15 @@ const useSockets = (server: HttpServer): void => {
     return `${hour}:${min}:${sec}:${ms}`
   }
 
-  const subscribeToChannels = (
-    socket,
-    { userChannelsList } // userContactsList
-  ) => {
-    const { id } = socket
-    const date = formatDate()
+  const subscribeToChannels = (socket, { userChannelsList }) => {
     if (Array.isArray(userChannelsList) && userChannelsList.length) {
       userChannelsList.forEach(({ id: channelId }) => {
         socket.join(channelId)
       })
-      logger.info(`[${date}] ${id} subscribed to channels`)
     }
   }
 
   const updateConnectedUsers = (socket) => {
-    // io.of('/').sockets.forEach((sock: ISocket) => {
-    //   if (!users.has(sock.userId)) {
-    //     users.set(sock.userId, new Set(sock.id))
-    //   }
-    // })
-
     if (!users.has(socket.userId)) {
       users.set(socket.userId, new Set([socket.id]))
     } else {
@@ -50,26 +52,32 @@ const useSockets = (server: HttpServer): void => {
     }
   }
 
-  io.use((socket: ISocket, next) => {
-    const { userId } = socket.handshake.auth
-    if (!userId) {
-      return next(new Error('invalid userId'))
-    }
-    // eslint-disable-next-line no-param-reassign
-    socket.userId = userId
-    next()
-  })
-
-  io.on('connection', (socket: ISocket) => {
+  chat.on('connection', (socket: ISocket) => {
     const { id } = socket
-    logger.info(`[${formatDate()}] ${id} connected`)
 
     updateConnectedUsers(socket)
     socket.emit('users:connected', users)
-    // console.log(`new user connected: ${id} (${socket.userId}`, users)
 
     socket.on('channels:subscribe', (payload) => {
       subscribeToChannels(socket, payload)
+    })
+
+    socket.on('channel:subscribe', (channelId) => {
+      socket.join(channelId)
+    })
+
+    // Invite user to channel
+    socket.on('channel:invite', ({ userId, channelId }) => {
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            const socketSession = chat.sockets.get(socketId)
+            socketSession.join(channelId)
+          })
+        }
+      }
     })
 
     socket.broadcast.emit('user:connected', {
@@ -82,7 +90,6 @@ const useSockets = (server: HttpServer): void => {
         activeChannelId,
         message
       })
-      // logger.info(`[${formatDate()}] ${id} writes: ${message.text}`)
     })
 
     // Private message
@@ -91,7 +98,7 @@ const useSockets = (server: HttpServer): void => {
 
       if (!userSockets) {
         logger.info(
-          `[${formatDate()}] Error: no socketId found for userId ${to} in users array`
+          `[${formatDate()}] Error: no socketId found for userId ${to} in users Map`
         )
         return
       }
@@ -102,14 +109,9 @@ const useSockets = (server: HttpServer): void => {
           message
         })
       })
-
-      // logger.info(
-      //   `[${formatDate()}] ${from} to ${to} writes PM: ${message.text}`
-      // )
     })
 
     socket.on('disconnect', () => {
-      // reason: string
       const { userId } = socket
 
       if (users.has(userId)) {
@@ -122,12 +124,10 @@ const useSockets = (server: HttpServer): void => {
         }
       }
 
-      // const date = formatDate()
-      // const message = `[${date}] ${id} disconnected: ${reason}`
-      // logger.info(`[${formatDate()}] ${id} disconnected: ${message}`)
-      // console.log(`user disconnected: ${id} (${userId}`, users)
+      // (reason: string) => {}
+      // const message = `[${formatDate()}] ${id} disconnected: ${reason}`
     })
   })
 }
 
-export default useSockets
+export default WebSocketService
