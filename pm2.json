@@ -2,11 +2,12 @@
   "apps": [
     {
       "name": "dev-server",
-      "script": "./src/index.ts",
-      "watch": ["./src"],
+      "script": "src/index.ts",
+      "watch": ["src"],
       "instances": 0,
       "exec_mode": "fork",
       "env": {
+        "NODE_PATH": "src",
         "NODE_ENV": "production"
       }
     }
