@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import config from 'config'
-import secretService, { SecretTypes } from './secret'
-import validationService from './validation'
-import emailService from './email'
+import secretService, { SecretTypes } from 'services/secret'
+import validationService from 'services/validation'
+import emailService from 'services/email'
 
 import {
   ValidationError,
@@ -21,8 +21,8 @@ import {
   JsonWebTokenError
 } from './errors'
 
-const { User } = require('../database/models')
-const { sequelize } = require('../database/models')
+const { User } = require('database/models')
+const { sequelize } = require('database/models')
 
 export interface ServerResponse {
   type: string

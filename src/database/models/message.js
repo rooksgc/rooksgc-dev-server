@@ -16,8 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       channel_id: DataTypes.INTEGER,
       to: DataTypes.INTEGER,
       type: DataTypes.STRING,
-      text: DataTypes.STRING,
-      photo: DataTypes.STRING
+      text: DataTypes.TEXT
     },
     {
       sequelize,

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express'
-import logger from '../services/logger'
+import logger from 'services/logger'
 
 const ERROR_DEFAULT_MESSAGE = 'Internal Server Error'
 const ERROR_DEFAULT_TYPE = 'error'

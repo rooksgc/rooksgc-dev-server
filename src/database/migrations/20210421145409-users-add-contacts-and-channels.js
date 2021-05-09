@@ -6,7 +6,7 @@ module.exports = {
           'Users',
           'contacts',
           {
-            type: Sequelize.STRING,
+            type: Sequelize.TEXT,
             allowNull: true
           },
           { transaction }
@@ -15,7 +15,7 @@ module.exports = {
           'Users',
           'channels',
           {
-            type: Sequelize.STRING,
+            type: Sequelize.TEXT,
             allowNull: true
           },
           { transaction }

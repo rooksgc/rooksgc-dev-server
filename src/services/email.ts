@@ -1,6 +1,6 @@
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import config from 'config'
-import { EmailSendingError } from './errors'
+import { EmailSendingError } from 'services/errors'
 
 export interface EmailServiceApi {
   send: (

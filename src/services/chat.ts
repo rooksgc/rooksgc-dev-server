@@ -1,10 +1,14 @@
 import { NextFunction, Request, Response } from 'express'
-import validationService from './validation'
-import { ValidationError, UserNotFound, ErrorChannelCreate } from './errors'
-import authService from './auth'
+import validationService from 'services/validation'
+import {
+  ValidationError,
+  UserNotFound,
+  ErrorChannelCreate
+} from 'services/errors'
+import authService from 'services/auth'
 
-const { Channel } = require('../database/models')
-const { sequelize } = require('../database/models')
+const { Channel } = require('database/models')
+const { sequelize } = require('database/models')
 
 export interface ServerResponse {
   type: string
@@ -79,7 +83,7 @@ const ChatService: ChatServiceApi = {
         throw new ValidationError(message)
       }
 
-      let channelId
+      let channelId: number
 
       await sequelize.transaction(async () => {
         const user = await authService.findById(ownerId)

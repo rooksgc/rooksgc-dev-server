@@ -23,8 +23,8 @@ module.exports = (sequelize, DataTypes) => {
       password: DataTypes.STRING,
       role: DataTypes.STRING,
       is_active: DataTypes.BOOLEAN,
-      contacts: DataTypes.STRING,
-      channels: DataTypes.STRING
+      contacts: DataTypes.TEXT,
+      channels: DataTypes.TEXT
     },
     {
       sequelize,

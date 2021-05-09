@@ -3,10 +3,10 @@ import { createServer } from 'http'
 import compression from 'compression'
 import config from 'config'
 import cors from 'cors'
-import useAuthRoutes from './routes/auth'
-import useChatRoutes from './routes/chat'
-import errorsMiddleware from './middleware/errors'
-import useSockets from './services/socket'
+import useAuthRoutes from 'routes/auth'
+import useChatRoutes from 'routes/chat'
+import errorsMiddleware from 'middleware/errors'
+import useSockets from 'services/socket'
 
 const port = config.get('port')
 const host = config.get('host')

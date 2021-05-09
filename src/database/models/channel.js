@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       owner_id: DataTypes.INTEGER,
       name: DataTypes.STRING,
-      members: DataTypes.STRING,
+      members: DataTypes.TEXT,
       photo: DataTypes.TEXT
     },
     {

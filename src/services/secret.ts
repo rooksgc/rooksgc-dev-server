@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 
-const { Secret } = require('../database/models')
+const { Secret } = require('database/models')
 
 export enum SecretTypes {
   EMAIL_CONFIRMATION = 'EMAIL_CONFIRMATION',

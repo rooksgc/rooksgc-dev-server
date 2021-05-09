@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import chatService from '../services/chat'
-import authMiddleware from '../middleware/auth'
+import chatService from 'services/chat'
+import authMiddleware from 'middleware/auth'
 
 const { createChannel, fetchUserChannels } = chatService
 

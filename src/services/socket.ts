@@ -1,6 +1,6 @@
 import { Server as HttpServer } from 'http'
 import { Server, Socket } from 'socket.io'
-import logger from './logger'
+import logger from 'services/logger'
 
 interface ISocket extends Socket {
   userId: number
