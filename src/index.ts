@@ -1,12 +1,12 @@
 import express, { Router, Request, Response } from 'express'
-import { createServer } from 'http'
 import compression from 'compression'
 import config from 'config'
 import cors from 'cors'
-import useAuthRoutes from 'routes/auth'
-import useChatRoutes from 'routes/chat'
-import errorsMiddleware from 'middleware/errors'
-import useSockets from 'services/socket'
+import { createServer } from 'http'
+import { authRoutes } from 'routes/auth'
+import { chatRoutes } from 'routes/chat'
+import { errorMiddleware } from 'middleware/errors'
+import { webSocketService } from 'services/socket'
 
 const port = config.get('port')
 const host = config.get('host')
@@ -33,13 +33,13 @@ app.use(express.json())
 app.use(API_PATH, router)
 
 // Routes
-useAuthRoutes(router)
-useChatRoutes(router)
+authRoutes(router)
+chatRoutes(router)
 
 // Sockets
-useSockets(server)
+webSocketService(server)
 
-app.use(errorsMiddleware)
+app.use(errorMiddleware)
 
 async function start() {
   try {

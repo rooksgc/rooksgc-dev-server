@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import config from 'config'
-import secretService, { SecretTypes } from 'services/secret'
-import validationService from 'services/validation'
-import emailService from 'services/email'
+import { secretService, SecretTypes } from 'services/secret'
+import { validationService } from 'services/validation'
+import { emailService } from 'services/email'
 
 import {
   ValidationError,
@@ -35,6 +35,7 @@ export interface UserDTO {
   id: number
   name: string
   email: string
+  photo: string
   role: string
   channels: string
   contacts: string
@@ -71,9 +72,10 @@ export interface AuthServiceApi {
   changePassword: AuthMethodType
   fetchByToken: AuthMethodType
   findById(userId: number): Promise<typeof User>
+  changePhoto: AuthMethodType
 }
 
-const AuthService: AuthServiceApi = {
+const authService: AuthServiceApi = {
   /**
    * Убирает лишние поля из объекта пользователя
    * @param {User} user объект пользователя от БД
@@ -131,7 +133,7 @@ const AuthService: AuthServiceApi = {
           throw new UserNameAllreadyExists()
         }
 
-        const hashedPassword = await AuthService.hashPassword(password)
+        const hashedPassword = await authService.hashPassword(password)
 
         const newUser = await User.create({
           name,
@@ -166,7 +168,7 @@ const AuthService: AuthServiceApi = {
     try {
       const allUsers = await User.findAll()
       const allUsersDTO = allUsers.map((user) =>
-        AuthService.userToDTO(user.dataValues)
+        authService.userToDTO(user.dataValues)
       )
       return res.status(201).json({ type: 'success', data: allUsersDTO })
     } catch (error) {
@@ -199,7 +201,7 @@ const AuthService: AuthServiceApi = {
         await secretService.deleteById(secret.id)
       })
 
-      return res.status(201).json({
+      return res.status(204).json({
         type: 'success',
         message:
           'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'
@@ -228,7 +230,7 @@ const AuthService: AuthServiceApi = {
         throw new UserIsNotActivated()
       }
 
-      const passwordIsValid = await AuthService.validatePassword(
+      const passwordIsValid = await authService.validatePassword(
         password,
         user.password
       )
@@ -245,7 +247,7 @@ const AuthService: AuthServiceApi = {
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
-        data: AuthService.userToDTO(user.dataValues)
+        data: authService.userToDTO(user.dataValues)
       })
     } catch (error) {
       next(error)
@@ -345,7 +347,7 @@ const AuthService: AuthServiceApi = {
           throw new UserNotFound()
         }
 
-        const newPassword = await AuthService.hashPassword(password)
+        const newPassword = await authService.hashPassword(password)
         user.password = newPassword
         await user.save()
       })
@@ -397,7 +399,7 @@ const AuthService: AuthServiceApi = {
 
       return res
         .status(201)
-        .json({ type: 'success', data: AuthService.userToDTO(user.dataValues) })
+        .json({ type: 'success', data: authService.userToDTO(user.dataValues) })
     } catch (error) {
       next(error)
     }
@@ -405,7 +407,35 @@ const AuthService: AuthServiceApi = {
 
   async findById(userId: number) {
     return await User.findByPk(userId)
+  },
+
+  async changePhoto(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { id, photo } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const user = await User.findByPk(id)
+      if (!user) {
+        throw new UserNotFound()
+      }
+
+      user.photo = photo
+      await user.save()
+
+      return res
+        .status(201)
+        .json({ type: 'success', message: 'Изменения сохранены' })
+    } catch (error) {
+      next(error)
+    }
   }
 }
 
-export default AuthService
+export { authService }

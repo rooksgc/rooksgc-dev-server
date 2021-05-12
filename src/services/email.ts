@@ -1,5 +1,5 @@
-import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import config from 'config'
+import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import { EmailSendingError } from 'services/errors'
 
 export interface EmailServiceApi {
@@ -26,7 +26,7 @@ const transporter: Transporter = createTransport({
   }
 })
 
-const EmailService: EmailServiceApi = {
+const emailService: EmailServiceApi = {
   async send(
     recipients: string[],
     subject: string,
@@ -73,4 +73,4 @@ const EmailService: EmailServiceApi = {
   }
 }
 
-export default EmailService
+export { emailService }

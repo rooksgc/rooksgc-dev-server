@@ -1,12 +1,12 @@
 import { Server as HttpServer } from 'http'
 import { Server, Socket } from 'socket.io'
-import logger from 'services/logger'
+import { loggerService as logger } from 'services/logger'
 
 interface ISocket extends Socket {
   userId: number
 }
 
-const WebSocketService = (server: HttpServer): void => {
+const webSocketService = (server: HttpServer): void => {
   const io = new Server(server)
 
   // Namespaces
@@ -97,7 +97,7 @@ const WebSocketService = (server: HttpServer): void => {
       const userSockets = users.get(to)
 
       if (!userSockets) {
-        logger.info(
+        logger.error(
           `[${formatDate()}] Error: no socketId found for userId ${to} in users Map`
         )
         return
@@ -130,4 +130,4 @@ const WebSocketService = (server: HttpServer): void => {
   })
 }
 
-export default WebSocketService
+export { webSocketService }

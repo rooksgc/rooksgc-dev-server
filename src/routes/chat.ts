@@ -1,13 +1,18 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import chatService from 'services/chat'
-import authMiddleware from 'middleware/auth'
+import { chatService } from 'services/chat'
+import { authMiddleware } from 'middleware/auth'
 
-const { createChannel, fetchUserChannels } = chatService
+const { createChannel, populateUserChannels } = chatService
 
-export default (router: Router): void => {
+const chatRoutes = (router: Router): void => {
   router
-    .get('/chat/channels/:userId', authMiddleware, fetchUserChannels)
+    .post(
+      '/chat/channels',
+      authMiddleware,
+      body('channels').exists().isString().trim(),
+      populateUserChannels
+    )
     .put(
       '/chat/channel',
       authMiddleware,
@@ -39,3 +44,5 @@ export default (router: Router): void => {
   // )
   // .post('/auth/fetch-by-token', body('token').trim().isString(), fetchByToken)
 }
+
+export { chatRoutes }

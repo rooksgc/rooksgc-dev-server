@@ -1,6 +1,6 @@
 import { createLogger, format, transports, Logger } from 'winston'
 
-const LoggerService = (): Logger => {
+const loggerService = ((): Logger => {
   const logFormat = format.combine(
     format.timestamp({ format: 'DD-MM-YYYY HH:mm:ss' }),
     format.align(),
@@ -12,12 +12,6 @@ const LoggerService = (): Logger => {
 
   const logger = createLogger({
     transports: [
-      new transports.File({
-        level: 'info',
-        filename: 'logs/info.log',
-        handleExceptions: true,
-        format: logFormat
-      }),
       new transports.File({
         level: 'error',
         filename: 'logs/errors.log',
@@ -39,6 +33,6 @@ const LoggerService = (): Logger => {
   }
 
   return logger
-}
+})()
 
-export default LoggerService()
+export { loggerService }

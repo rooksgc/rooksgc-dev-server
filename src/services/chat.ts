@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
-import validationService from 'services/validation'
+import { validationService } from 'services/validation'
 import {
   ValidationError,
   UserNotFound,
   ErrorChannelCreate
 } from 'services/errors'
-import authService from 'services/auth'
+import { authService } from 'services/auth'
 
 const { Channel } = require('database/models')
 const { sequelize } = require('database/models')
@@ -29,11 +29,11 @@ export interface ICreateChannelDTO {
 
 export interface ChatServiceApi {
   createChannel: ChatMethodType
-  fetchUserChannels: ChatMethodType
+  populateUserChannels: ChatMethodType
   channelsToDTO: (channels: any) => any
 }
 
-const ChatService: ChatServiceApi = {
+const chatService: ChatServiceApi = {
   channelsToDTO: (channels: any): any => {
     return channels.map((channel: any) => ({
       id: channel.id,
@@ -44,28 +44,28 @@ const ChatService: ChatServiceApi = {
     }))
   },
 
-  async fetchUserChannels(
+  async populateUserChannels(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<Response<ServerResponse>> {
     try {
-      const { userId } = req.params
-      const user = await authService.findById(parseInt(userId, 10))
+      const { channels } = req.body
 
-      if (!user) {
-        throw new UserNotFound()
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError(message)
       }
 
-      const channelsList = JSON.parse(user.channels)
-      const channels = await Channel.findAll({
+      const channelsList = JSON.parse(channels)
+      const populatedChannels = await Channel.findAll({
         where: { id: channelsList }
       })
 
       return res.status(201).json({
         type: 'success',
         message: 'Список каналов пользователя получен успешно',
-        data: ChatService.channelsToDTO(channels)
+        data: chatService.channelsToDTO(populatedChannels)
       })
     } catch (error) {
       next(error)
@@ -78,6 +78,7 @@ const ChatService: ChatServiceApi = {
   ): Promise<Response<ServerResponse>> {
     try {
       const { name, description, photo, ownerId } = req.body
+
       const message = validationService.validate(req)
       if (message) {
         throw new ValidationError(message)
@@ -127,4 +128,4 @@ const ChatService: ChatServiceApi = {
   }
 }
 
-export default ChatService
+export { chatService }

@@ -1,6 +1,4 @@
-import { config } from 'dotenv'
-
-config()
+require('dotenv').config()
 
 const {
   DB_HOST,

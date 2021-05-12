@@ -4,9 +4,9 @@ import expressJwt from 'express-jwt'
 const jwtSecret = config.get('jwt.secret')
 const jwtAlgorithms = config.get('jwt.algorithms')
 
-const auth = expressJwt({
+const authMiddleware = expressJwt({
   algorithms: [`${jwtAlgorithms}`],
   secret: jwtSecret
 })
 
-export default auth
+export { authMiddleware }

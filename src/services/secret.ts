@@ -23,7 +23,7 @@ export interface SecretServiceApi {
   deleteById: (id: number) => Promise<void>
 }
 
-const SecretService: SecretServiceApi = {
+const secretService: SecretServiceApi = {
   async create(user_id: string, type: SecretTypes): Promise<SecretDTO> {
     const public_code = uuidv4()
 
@@ -48,4 +48,4 @@ const SecretService: SecretServiceApi = {
   }
 }
 
-export default SecretService
+export { secretService }
