@@ -7,6 +7,16 @@ export class EmailAllreadyExists extends Error {
   readonly message = 'Email уже существует! Выберите другой адрес.'
 }
 
+export class ContactAllreadyExist extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Пользователь уже находится в Вашем списке контактов!'
+}
+
+export class CantAddSelfToContacts extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Нельзя добавлять в контакты себя'
+}
+
 export class UserNameAllreadyExists extends Error {
   private readonly statusCode = 409
   readonly message = 'Имя занято! Придумайте другое имя пользователя.'

@@ -4,6 +4,7 @@ import config from 'config'
 import cors from 'cors'
 import { createServer } from 'http'
 import { authRoutes } from 'routes/auth'
+import { userRoutes } from 'routes/user'
 import { chatRoutes } from 'routes/chat'
 import { errorMiddleware } from 'middleware/errors'
 import { webSocketService } from 'services/socket'
@@ -34,6 +35,7 @@ app.use(API_PATH, router)
 
 // Routes
 authRoutes(router)
+userRoutes(router)
 chatRoutes(router)
 
 // Sockets

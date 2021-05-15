@@ -5,6 +5,7 @@ import config from 'config'
 import { secretService, SecretTypes } from 'services/secret'
 import { validationService } from 'services/validation'
 import { emailService } from 'services/email'
+import { userService, UserRole } from 'services/user'
 
 import {
   ValidationError,
@@ -24,33 +25,17 @@ import {
 const { User } = require('database/models')
 const { sequelize } = require('database/models')
 
-export interface ServerResponse {
+interface ServerResponse {
   type: string
   message?: string
   data?: any
   token?: string
 }
 
-export interface UserDTO {
-  id: number
-  name: string
-  email: string
-  photo: string
-  role: string
-  channels: string
-  contacts: string
-}
-
 export interface ExtractedTokenPayload {
   userId: number
   iat: number
   exp: number
-}
-
-export enum UserRole {
-  USER = 'USER',
-  MODERATOR = 'MODERATOR',
-  ADMIN = 'ADMIN'
 }
 
 type AuthMethodType = (
@@ -60,36 +45,18 @@ type AuthMethodType = (
 ) => Promise<Response<ServerResponse>>
 
 export interface AuthServiceApi {
-  userToDTO(user: typeof User): UserDTO
   hashPassword(password: string): Promise<string>
   validatePassword(password: string, hashed: string): Promise<boolean>
   register: AuthMethodType
-  findAll: AuthMethodType
   activate: AuthMethodType
   login: AuthMethodType
   recover: AuthMethodType
   checkSecret: AuthMethodType
   changePassword: AuthMethodType
   fetchByToken: AuthMethodType
-  findById(userId: number): Promise<typeof User>
-  changePhoto: AuthMethodType
 }
 
 const authService: AuthServiceApi = {
-  /**
-   * Убирает лишние поля из объекта пользователя
-   * @param {User} user объект пользователя от БД
-   * @returns {UserDTO} объект для передачи на фронтенд
-   */
-  userToDTO(user: typeof User): UserDTO {
-    const userDto = { ...user }
-    delete userDto.password
-    delete userDto.createdAt
-    delete userDto.updatedAt
-    delete userDto.is_active
-    return userDto
-  },
-
   /**
    * Вычисляет хеш от пароля
    * @param {string} password - пароль
@@ -155,22 +122,6 @@ const authService: AuthServiceApi = {
         type: 'success',
         message: `Пользователь создан. Активируйте свой аккаунт, выполнив переход по ссылке из письма, которое выслано на адрес: ${email}`
       })
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  async findAll(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const allUsers = await User.findAll()
-      const allUsersDTO = allUsers.map((user) =>
-        authService.userToDTO(user.dataValues)
-      )
-      return res.status(201).json({ type: 'success', data: allUsersDTO })
     } catch (error) {
       next(error)
     }
@@ -247,7 +198,7 @@ const authService: AuthServiceApi = {
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
-        data: authService.userToDTO(user.dataValues)
+        data: userService.userToDTO(user.dataValues)
       })
     } catch (error) {
       next(error)
@@ -399,39 +350,7 @@ const authService: AuthServiceApi = {
 
       return res
         .status(201)
-        .json({ type: 'success', data: authService.userToDTO(user.dataValues) })
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  async findById(userId: number) {
-    return await User.findByPk(userId)
-  },
-
-  async changePhoto(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const { id, photo } = req.body
-      const message = validationService.validate(req)
-      if (message) {
-        throw new ValidationError()
-      }
-
-      const user = await User.findByPk(id)
-      if (!user) {
-        throw new UserNotFound()
-      }
-
-      user.photo = photo
-      await user.save()
-
-      return res
-        .status(201)
-        .json({ type: 'success', message: 'Изменения сохранены' })
+        .json({ type: 'success', data: userService.userToDTO(user.dataValues) })
     } catch (error) {
       next(error)
     }

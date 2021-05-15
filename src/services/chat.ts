@@ -5,12 +5,12 @@ import {
   UserNotFound,
   ErrorChannelCreate
 } from 'services/errors'
-import { authService } from 'services/auth'
+import { userService } from 'services/user'
 
 const { Channel } = require('database/models')
 const { sequelize } = require('database/models')
 
-export interface ServerResponse {
+interface ServerResponse {
   type: string
   message?: string
   data?: any
@@ -71,6 +71,7 @@ const chatService: ChatServiceApi = {
       next(error)
     }
   },
+
   async createChannel(
     req: Request,
     res: Response,
@@ -87,7 +88,7 @@ const chatService: ChatServiceApi = {
       let channelId: number
 
       await sequelize.transaction(async () => {
-        const user = await authService.findById(ownerId)
+        const user = await userService.findById(ownerId)
         if (!user) {
           throw new UserNotFound()
         }
