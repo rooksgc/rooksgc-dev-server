@@ -29,7 +29,7 @@ export interface ICreateChannelDTO {
 
 export interface ChatServiceApi {
   createChannel: ChatMethodType
-  populateUserChannels: ChatMethodType
+  populateChannels: ChatMethodType
   channelsToDTO: (channels: any) => any
 }
 
@@ -44,7 +44,7 @@ const chatService: ChatServiceApi = {
     }))
   },
 
-  async populateUserChannels(
+  async populateChannels(
     req: Request,
     res: Response,
     next: NextFunction
@@ -64,7 +64,7 @@ const chatService: ChatServiceApi = {
 
       return res.status(201).json({
         type: 'success',
-        message: 'Список каналов пользователя получен успешно',
+        message: 'Список каналов получен',
         data: chatService.channelsToDTO(populatedChannels)
       })
     } catch (error) {

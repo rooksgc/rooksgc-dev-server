@@ -42,10 +42,12 @@ type UserMethodType = (
 
 export interface UserServiceApi {
   userToDTO(user: typeof User): UserDTO
+  contactsToDTO(contacts: any): any
   findById(userId: number): Promise<typeof User>
   findAll: UserMethodType
   changePhoto: UserMethodType
   addContact: UserMethodType
+  populateContacts: UserMethodType
 }
 
 const userService: UserServiceApi = {
@@ -61,6 +63,17 @@ const userService: UserServiceApi = {
     delete userDto.updatedAt
     delete userDto.is_active
     return userDto
+  },
+
+  /** Объект развернутых контактов пользователя для фронтенда */
+  contactsToDTO: (contacts: any): any => {
+    return contacts.map((contact) => ({
+      id: contact.id,
+      name: contact.name,
+      email: contact.email,
+      photo: contact.photo,
+      role: contact.role
+    }))
   },
 
   /** Поиск пользователя по id */
@@ -155,8 +168,39 @@ const userService: UserServiceApi = {
 
       return res.status(201).json({
         type: 'success',
-        message: 'Контакт успешно добавлен',
+        message: 'Контакт добавлен',
         data
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  /** Развернуть список контактов */
+  async populateContacts(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { contacts } = req.body
+
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError(message)
+      }
+
+      const contactsList = JSON.parse(contacts)
+      const populatedContacts = await User.findAll({
+        where: { id: contactsList }
+      })
+
+      const contactsDTO = userService.contactsToDTO(populatedContacts)
+
+      return res.status(201).json({
+        type: 'success',
+        message: 'Список контактов получен',
+        data: contactsDTO
       })
     } catch (error) {
       next(error)
