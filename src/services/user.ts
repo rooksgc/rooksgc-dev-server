@@ -45,6 +45,7 @@ export interface UserServiceApi {
   contactsToDTO(contacts: any): any
   findById(userId: number): Promise<typeof User>
   findAll: UserMethodType
+  findMany: UserMethodType
   changePhoto: UserMethodType
   addContact: UserMethodType
   populateContacts: UserMethodType
@@ -93,6 +94,27 @@ const userService: UserServiceApi = {
         userService.userToDTO(user.dataValues)
       )
       return res.status(201).json({ type: 'success', data: allUsersDTO })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async findMany(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { members } = req.body
+      const usersList = JSON.parse(members)
+
+      const users = await User.findAll({
+        where: { id: usersList }
+      })
+      const usersDTO = users.map((user) =>
+        userService.userToDTO(user.dataValues)
+      )
+      return res.status(200).json({ type: 'success', data: usersDTO })
     } catch (error) {
       next(error)
     }
@@ -197,7 +219,7 @@ const userService: UserServiceApi = {
 
       const contactsDTO = userService.contactsToDTO(populatedContacts)
 
-      return res.status(201).json({
+      return res.status(200).json({
         type: 'success',
         message: 'Список контактов получен',
         data: contactsDTO

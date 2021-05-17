@@ -35,14 +35,6 @@ const webSocketService = (server: HttpServer): void => {
     return `${hour}:${min}:${sec}:${ms}`
   }
 
-  const subscribeToChannels = (socket, { userChannelsList }) => {
-    if (Array.isArray(userChannelsList) && userChannelsList.length) {
-      userChannelsList.forEach(({ id: channelId }) => {
-        socket.join(channelId)
-      })
-    }
-  }
-
   const updateConnectedUsers = (socket) => {
     if (!users.has(socket.userId)) {
       users.set(socket.userId, new Set([socket.id]))
@@ -58,8 +50,12 @@ const webSocketService = (server: HttpServer): void => {
     updateConnectedUsers(socket)
     socket.emit('users:connected', users)
 
-    socket.on('channels:subscribe', (payload) => {
-      subscribeToChannels(socket, payload)
+    socket.on('channels:subscribe', (channels) => {
+      if (Array.isArray(channels) && channels.length) {
+        channels.forEach(({ id: channelId }) => {
+          socket.join(channelId)
+        })
+      }
     })
 
     socket.on('channel:subscribe', (channelId) => {
