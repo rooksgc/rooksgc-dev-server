@@ -9,7 +9,12 @@ export class EmailAllreadyExists extends Error {
 
 export class ContactAllreadyExist extends Error {
   private readonly statusCode = 409
-  readonly message = 'Пользователь уже находится в Вашем списке контактов!'
+  readonly message = 'Пользователь уже находится в Вашем списке контактов'
+}
+
+export class ContactNotFound extends Error {
+  private readonly statusCode = 404
+  readonly message = 'Пользователя нет в Вашем списке контактов'
 }
 
 export class CantAddSelfToContacts extends Error {
@@ -24,17 +29,17 @@ export class UserNameAllreadyExists extends Error {
 
 export class InvalidPassword extends Error {
   private readonly statusCode = 401
-  readonly message = 'Неверный пароль!'
+  readonly message = 'Неверный пароль'
 }
 
 export class UnauthorizedError extends Error {
   private readonly statusCode = 401
-  readonly message = 'Ошибка авторизации.'
+  readonly message = 'Ошибка авторизации'
 }
 
 export class EmailDoesNotExist extends Error {
   private readonly statusCode = 409
-  readonly message = 'Пользователя с таким email не существует!'
+  readonly message = 'Пользователя с таким email не существует'
 }
 
 export class UserIsNotActivated extends Error {
@@ -51,13 +56,13 @@ export class UserActivationError extends Error {
 
 export class EmailSendingError extends Error {
   private readonly statusCode = 500
-  readonly message = 'Ошибка отправки письма!'
+  readonly message = 'Ошибка отправки письма'
 }
 
 export class SecretNotFound extends Error {
   private readonly statusCode = 404
   readonly message =
-    'Ошибка смены пароля: неверный или уже использованный секретный код!'
+    'Ошибка смены пароля: неверный или уже использованный секретный код'
 }
 
 export class UserNotFound extends Error {

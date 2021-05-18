@@ -6,7 +6,8 @@ import {
   EmailDoesNotExist,
   UserNotFound,
   ContactAllreadyExist,
-  CantAddSelfToContacts
+  CantAddSelfToContacts,
+  ContactNotFound
 } from './errors'
 
 const { User } = require('database/models')
@@ -48,6 +49,7 @@ export interface UserServiceApi {
   findMany: UserMethodType
   changePhoto: UserMethodType
   addContact: UserMethodType
+  removeContact: UserMethodType
   populateContacts: UserMethodType
 }
 
@@ -67,7 +69,7 @@ const userService: UserServiceApi = {
   },
 
   /** Объект развернутых контактов пользователя для фронтенда */
-  contactsToDTO: (contacts: any): any => {
+  contactsToDTO: (contacts: typeof User[]): any => {
     return contacts.map((contact) => ({
       id: contact.id,
       name: contact.name,
@@ -186,12 +188,58 @@ const userService: UserServiceApi = {
 
       await userForContactAdd.save()
 
-      const data = JSON.stringify(userService.userToDTO(userToAdd))
-
       return res.status(201).json({
         type: 'success',
         message: 'Контакт добавлен',
-        data
+        data: userService.userToDTO(userToAdd.dataValues)
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  /** Удаление контакта */
+  async removeContact(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { userId: userIdParam, contactId: contactIdParam } = req.params
+      const userId = parseInt(userIdParam, 10)
+      const contactId = parseInt(contactIdParam, 10)
+
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const user = await User.findByPk(userId)
+      if (!user) {
+        throw new UserNotFound()
+      }
+
+      const contacts = user.contacts ? JSON.parse(user.contacts) : []
+
+      if (!contacts.includes(contactId)) {
+        throw new ContactNotFound()
+      }
+
+      let updatedContacts = contacts.filter(
+        (idToRemove: number) => idToRemove !== contactId
+      )
+      if (!updatedContacts.length) {
+        updatedContacts = null
+      } else {
+        updatedContacts = JSON.stringify(updatedContacts)
+      }
+
+      user.contacts = updatedContacts
+      await user.save()
+
+      return res.status(200).json({
+        type: 'success',
+        message: 'Контакт удален'
       })
     } catch (error) {
       next(error)

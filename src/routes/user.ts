@@ -3,7 +3,13 @@ import { body } from 'express-validator'
 import { userService } from 'services/user'
 import { authMiddleware } from 'middleware/auth'
 
-const { changePhoto, addContact, populateContacts, findMany } = userService
+const {
+  changePhoto,
+  addContact,
+  removeContact,
+  populateContacts,
+  findMany
+} = userService
 
 const userRoutes = (router: Router): void => {
   router
@@ -21,6 +27,7 @@ const userRoutes = (router: Router): void => {
       body('email').trim().isEmail(),
       addContact
     )
+    .delete('/user/:userId/contact/:contactId', authMiddleware, removeContact)
     .post(
       '/user/contacts',
       authMiddleware,
