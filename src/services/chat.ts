@@ -17,7 +17,7 @@ interface ServerResponse {
   token?: string
 }
 
-type ChatMethodType = (
+type IResponse = (
   req: Request,
   res: Response,
   next?: NextFunction
@@ -28,8 +28,8 @@ export interface ICreateChannelDTO {
 }
 
 export interface ChatServiceApi {
-  createChannel: ChatMethodType
-  populateChannels: ChatMethodType
+  createChannel: IResponse
+  populateChannels: IResponse
   channelsToDTO: (channels: any) => any
 }
 

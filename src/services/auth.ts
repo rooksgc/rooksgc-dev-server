@@ -38,7 +38,7 @@ export interface ExtractedTokenPayload {
   exp: number
 }
 
-type AuthMethodType = (
+type IResponse = (
   req: Request,
   res: Response,
   next?: NextFunction
@@ -47,13 +47,13 @@ type AuthMethodType = (
 export interface AuthServiceApi {
   hashPassword(password: string): Promise<string>
   validatePassword(password: string, hashed: string): Promise<boolean>
-  register: AuthMethodType
-  activate: AuthMethodType
-  login: AuthMethodType
-  recover: AuthMethodType
-  checkSecret: AuthMethodType
-  changePassword: AuthMethodType
-  fetchByToken: AuthMethodType
+  register: IResponse
+  activate: IResponse
+  login: IResponse
+  recover: IResponse
+  checkSecret: IResponse
+  changePassword: IResponse
+  fetchByToken: IResponse
 }
 
 const authService: AuthServiceApi = {
