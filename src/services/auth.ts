@@ -198,7 +198,7 @@ const authService: AuthServiceApi = {
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
-        data: userService.userToDTO(user.dataValues)
+        data: userService.userToDTO(user)
       })
     } catch (error) {
       next(error)
@@ -350,7 +350,7 @@ const authService: AuthServiceApi = {
 
       return res
         .status(201)
-        .json({ type: 'success', data: userService.userToDTO(user.dataValues) })
+        .json({ type: 'success', data: userService.userToDTO(user) })
     } catch (error) {
       next(error)
     }

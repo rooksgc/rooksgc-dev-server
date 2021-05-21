@@ -1,16 +1,10 @@
 import { NextFunction, Request, Response } from 'express'
 import { validationService } from 'services/validation'
-
-import {
-  ValidationError,
-  EmailDoesNotExist,
-  UserNotFound,
-  ContactAllreadyExist,
-  CantAddSelfToContacts,
-  ContactNotFound
-} from './errors'
+import { ValidationError, UserNotFound } from 'services/errors'
 
 const { User } = require('database/models')
+
+export const UserModel = User
 
 export interface ServerResponse {
   type: string
@@ -35,22 +29,19 @@ export enum UserRole {
   ADMIN = 'ADMIN'
 }
 
-type UserMethodType = (
+type IResponse = (
   req: Request,
   res: Response,
   next?: NextFunction
 ) => Promise<Response<ServerResponse>>
 
 export interface UserServiceApi {
-  userToDTO(user: typeof User): UserDTO
-  contactsToDTO(contacts: any): any
-  findById(userId: number): Promise<typeof User>
-  findAll: UserMethodType
-  findMany: UserMethodType
-  changePhoto: UserMethodType
-  addContact: UserMethodType
-  removeContact: UserMethodType
-  populateContacts: UserMethodType
+  userToDTO: (user: typeof User) => UserDTO
+  findById: (userId: number) => Promise<typeof User>
+  findByEmail: (email: string) => Promise<typeof User>
+  findAll: (condition: any) => Promise<UserDTO[]>
+  populateUsers: IResponse
+  changePhoto: IResponse
 }
 
 const userService: UserServiceApi = {
@@ -60,62 +51,46 @@ const userService: UserServiceApi = {
    * @returns {UserDTO} объект для передачи на фронтенд
    */
   userToDTO(user: typeof User): UserDTO {
-    const userDto = { ...user }
+    const userDto = user.dataValues ? { ...user.dataValues } : { ...user }
     delete userDto.password
     delete userDto.createdAt
     delete userDto.updatedAt
     delete userDto.is_active
+
     return userDto
   },
 
-  /** Объект развернутых контактов пользователя для фронтенда */
-  contactsToDTO: (contacts: typeof User[]): any => {
-    return contacts.map((contact) => ({
-      id: contact.id,
-      name: contact.name,
-      email: contact.email,
-      photo: contact.photo,
-      role: contact.role
-    }))
-  },
-
-  /** Поиск пользователя по id */
-  async findById(userId: number) {
+  /** Поиск по id */
+  async findById(userId: number): Promise<typeof User> {
     return await User.findByPk(userId)
   },
 
-  /** Поиск всех пользователей */
-  async findAll(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const allUsers = await User.findAll()
-      const allUsersDTO = allUsers.map((user) =>
-        userService.userToDTO(user.dataValues)
-      )
-      return res.status(201).json({ type: 'success', data: allUsersDTO })
-    } catch (error) {
-      next(error)
-    }
+  /** Поиск по email */
+  async findByEmail(email: string): Promise<typeof User> {
+    return await User.findOne({ where: { email } })
   },
 
-  async findMany(
+  /** Поиск всех пользователей с необязательным фильтром */
+  async findAll(condition = {}): Promise<UserDTO[]> {
+    const allUsers = await User.findAll(condition)
+    const allUsersDTO = allUsers.map((user) => userService.userToDTO(user))
+    return allUsersDTO
+  },
+
+  /** Раскрыть список пользователей по списку id */
+  async populateUsers(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<Response<ServerResponse>> {
     try {
-      const { members } = req.body
-      const usersList = JSON.parse(members)
+      const { ids } = req.body
+      const usersList = JSON.parse(ids)
 
       const users = await User.findAll({
         where: { id: usersList }
       })
-      const usersDTO = users.map((user) =>
-        userService.userToDTO(user.dataValues)
-      )
+      const usersDTO = users.map((user) => userService.userToDTO(user))
       return res.status(200).json({ type: 'success', data: usersDTO })
     } catch (error) {
       next(error)
@@ -146,132 +121,6 @@ const userService: UserServiceApi = {
       return res
         .status(201)
         .json({ type: 'success', message: 'Фото пользователя изменено' })
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  /** Добавление нового контакта для пользователя */
-  async addContact(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const { from, email } = req.body
-      const message = validationService.validate(req)
-      if (message) {
-        throw new ValidationError()
-      }
-
-      const userToAdd = await User.findOne({ where: { email } })
-      if (!userToAdd) {
-        throw new EmailDoesNotExist()
-      }
-
-      const userForContactAdd = await User.findByPk(from)
-
-      if (userForContactAdd.email === email) {
-        throw new CantAddSelfToContacts()
-      }
-
-      const userContacts = userForContactAdd.contacts
-        ? JSON.parse(userForContactAdd.contacts)
-        : []
-
-      if (userContacts.includes(userToAdd.id)) {
-        throw new ContactAllreadyExist()
-      }
-
-      userContacts.push(userToAdd.id)
-      userForContactAdd.contacts = JSON.stringify(userContacts)
-
-      await userForContactAdd.save()
-
-      return res.status(201).json({
-        type: 'success',
-        message: 'Контакт добавлен',
-        data: userService.userToDTO(userToAdd.dataValues)
-      })
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  /** Удаление контакта */
-  async removeContact(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const { userId: userIdParam, contactId: contactIdParam } = req.params
-      const userId = parseInt(userIdParam, 10)
-      const contactId = parseInt(contactIdParam, 10)
-
-      const message = validationService.validate(req)
-      if (message) {
-        throw new ValidationError()
-      }
-
-      const user = await User.findByPk(userId)
-      if (!user) {
-        throw new UserNotFound()
-      }
-
-      const contacts = user.contacts ? JSON.parse(user.contacts) : []
-
-      if (!contacts.includes(contactId)) {
-        throw new ContactNotFound()
-      }
-
-      let updatedContacts = contacts.filter(
-        (idToRemove: number) => idToRemove !== contactId
-      )
-      if (!updatedContacts.length) {
-        updatedContacts = null
-      } else {
-        updatedContacts = JSON.stringify(updatedContacts)
-      }
-
-      user.contacts = updatedContacts
-      await user.save()
-
-      return res.status(200).json({
-        type: 'success',
-        message: 'Контакт удален'
-      })
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  /** Развернуть список контактов */
-  async populateContacts(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response<ServerResponse>> {
-    try {
-      const { contacts } = req.body
-
-      const message = validationService.validate(req)
-      if (message) {
-        throw new ValidationError(message)
-      }
-
-      const contactsList = JSON.parse(contacts)
-      const populatedContacts = await User.findAll({
-        where: { id: contactsList }
-      })
-
-      const contactsDTO = userService.contactsToDTO(populatedContacts)
-
-      return res.status(200).json({
-        type: 'success',
-        message: 'Список контактов получен',
-        data: contactsDTO
-      })
     } catch (error) {
       next(error)
     }

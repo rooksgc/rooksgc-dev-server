@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
   Invite.init(
     {
       user_id: DataTypes.INTEGER,
+      user_name: DataTypes.STRING,
       inviter_id: DataTypes.INTEGER,
       type: DataTypes.STRING,
       text: DataTypes.TEXT

@@ -85,7 +85,18 @@ export class UserFetchByTokenError extends Error {
   readonly message = 'Не удалось получить пользователя по токену'
 }
 
-export class ErrorChannelCreate extends Error {
-  private readonly statusCode = 401
-  readonly message = 'Не удалось получить список каналов пользователя'
+// export class ErrorChannelCreate extends Error {
+//   private readonly statusCode = 401
+//   readonly message = 'Не удалось получить список каналов пользователя'
+// }
+
+export class InviteAllreadyExists extends Error {
+  private readonly statusCode = 409
+  readonly message =
+    'Приглашение уже отправлено пользователю и ждет подтверждения'
+}
+
+export class InviteDoesNotExists extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Запроса на добавление не поступало'
 }

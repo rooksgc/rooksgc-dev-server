@@ -14,6 +14,12 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE'
       })
+      User.hasMany(models.Invite, {
+        foreignKey: 'inviter_id',
+        as: 'invites',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+      })
     }
   }
   User.init(

@@ -48,7 +48,6 @@ const webSocketService = (server: HttpServer): void => {
     const { id } = socket
 
     updateConnectedUsers(socket)
-    socket.emit('users:connected', users)
 
     socket.on('channels:subscribe', (channels) => {
       if (Array.isArray(channels) && channels.length) {

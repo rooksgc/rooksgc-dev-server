@@ -3,13 +3,7 @@ import { body } from 'express-validator'
 import { userService } from 'services/user'
 import { authMiddleware } from 'middleware/auth'
 
-const {
-  changePhoto,
-  addContact,
-  removeContact,
-  populateContacts,
-  findMany
-} = userService
+const { changePhoto, populateUsers } = userService
 
 const userRoutes = (router: Router): void => {
   router
@@ -20,25 +14,11 @@ const userRoutes = (router: Router): void => {
       body('photo').trim().isString(),
       changePhoto
     )
-    .patch(
-      '/user/contacts',
-      authMiddleware,
-      body('from').exists(),
-      body('email').trim().isEmail(),
-      addContact
-    )
-    .delete('/user/:userId/contact/:contactId', authMiddleware, removeContact)
     .post(
-      '/user/contacts',
+      '/users/populate',
       authMiddleware,
-      body('contacts').exists().isString().trim(),
-      populateContacts
-    )
-    .post(
-      '/user/list',
-      authMiddleware,
-      body('members').exists().isString().trim(),
-      findMany
+      body('ids').exists().isString().trim(),
+      populateUsers
     )
 }
 
