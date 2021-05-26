@@ -32,8 +32,8 @@ const chatRoutes = (router: Router): void => {
     .patch(
       '/chat/contacts',
       authMiddleware,
-      body('from').exists(),
-      body('email').trim().isEmail(),
+      body('inviterId').exists().isNumeric(),
+      body('userId').exists().isNumeric(),
       addContact
     )
     .delete('/chat/:userId/contact/:contactId', authMiddleware, removeContact)
@@ -48,6 +48,7 @@ const chatRoutes = (router: Router): void => {
       '/chat/contact/invite',
       authMiddleware,
       body('inviterId').exists(),
+      body('inviterName').exists().isString(),
       body('inviterEmail').exists().isEmail(),
       body('inviterContacts').exists(),
       body('email').trim().isEmail(),

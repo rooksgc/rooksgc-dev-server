@@ -21,6 +21,7 @@ export interface UserDTO {
   role: string
   channels: string
   contacts: string
+  contactAdded?: boolean
 }
 
 export enum UserRole {

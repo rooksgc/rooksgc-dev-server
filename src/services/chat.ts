@@ -8,13 +8,13 @@ import {
   CantAddSelfToContacts,
   ContactNotFound,
   InviteAllreadyExists,
-  InviteDoesNotExists
+  InviteDoesNotExists,
+  InviteWasCancelled
 } from 'services/errors'
 
 import { userService, UserDTO } from 'services/user'
 
-const { Channel, Invite } = require('database/models')
-const { sequelize } = require('database/models')
+const { Channel, Invite, sequelize, Op } = require('database/models')
 
 interface ServerResponse {
   type: string
@@ -38,6 +38,7 @@ export interface ChatServiceApi {
   populateChannels: IResponse
   channelsToDTO: (channels: any) => any
   contactsToDTO: (contacts: any) => any
+  contactRequestsToDTO: (cr: any) => any
   invitesToDTO: (invites: any) => any
   addContact: IResponse
   removeContact: IResponse
@@ -65,16 +66,23 @@ const chatService: ChatServiceApi = {
       name: contact.name,
       email: contact.email,
       photo: contact.photo,
-      role: contact.role,
-      isInvite: contact.isInvite,
-      text: contact.text
+      role: contact.role
     })),
 
-  /** Преобразовать список инвайнов в транспортный объект */
+  /** Преобразовать список запросов в контакты в транспортный объект */
+  contactRequestsToDTO: (contactRequests: any): any =>
+    contactRequests.map((cr) => ({
+      id: cr.user_id,
+      name: cr.user_name,
+      isContactRequest: true,
+      text: cr.text
+    })),
+
+  /** Преобразовать список приглашений в транспортный объект */
   invitesToDTO: (invites: any): any =>
     invites.map((invite) => ({
-      id: invite.user_id,
-      name: invite.user_name,
+      id: invite.inviter_id,
+      name: invite.inviter_name,
       isInvite: true,
       text: invite.text
     })),
@@ -160,30 +168,35 @@ const chatService: ChatServiceApi = {
     }
   },
 
-  /** Добавление нового контакта для пользователя */
+  /** Добавление нового контакта */
   async addContact(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<Response<ServerResponse>> {
     try {
-      const { from, email } = req.body
+      const { inviterId, userId } = req.body
       const message = validationService.validate(req)
       if (message) {
         throw new ValidationError()
       }
 
-      const userToAdd = await userService.findByEmail(email)
-      if (!userToAdd) {
-        throw new EmailDoesNotExist()
+      const foundedInvite = await Invite.findOne({
+        where: { user_id: userId, inviter_id: inviterId, type: 'contact' }
+      })
+
+      if (!foundedInvite) {
+        throw new InviteWasCancelled()
       }
 
-      const userForContactAdd = await userService.findById(from)
+      const userToAdd = await userService.findById(inviterId)
+      const userForContactAdd = await userService.findById(userId)
 
-      if (userForContactAdd.email === email) {
-        throw new CantAddSelfToContacts()
+      if (!userToAdd || !userForContactAdd) {
+        throw new UserNotFound()
       }
 
+      // patch userForContactAdd contacts
       const userContacts = userForContactAdd.contacts
         ? JSON.parse(userForContactAdd.contacts)
         : []
@@ -194,8 +207,24 @@ const chatService: ChatServiceApi = {
 
       userContacts.push(userToAdd.id)
       userForContactAdd.contacts = JSON.stringify(userContacts)
-
       await userForContactAdd.save()
+
+      // patch userToAdd contacts
+      const userToAddContacts = userToAdd.contacts
+        ? JSON.parse(userToAdd.contacts)
+        : []
+
+      if (userToAddContacts.includes(userForContactAdd.id)) {
+        throw new ContactAllreadyExist()
+      }
+
+      userToAddContacts.push(userForContactAdd.id)
+      userToAdd.contacts = JSON.stringify(userToAddContacts)
+      await userToAdd.save()
+
+      await Invite.destroy({
+        where: { user_id: userId, inviter_id: inviterId, type: 'contact' }
+      })
 
       return res.status(201).json({
         type: 'success',
@@ -225,12 +254,13 @@ const chatService: ChatServiceApi = {
 
       await sequelize.transaction(async () => {
         const user = await userService.findById(userId)
-        if (!user) {
+        const contact = await userService.findById(contactId)
+
+        if (!user || !contact) {
           throw new UserNotFound()
         }
 
         const contacts = user.contacts ? JSON.parse(user.contacts) : []
-
         if (!contacts.includes(contactId)) {
           throw new ContactNotFound()
         }
@@ -246,6 +276,26 @@ const chatService: ChatServiceApi = {
 
         user.contacts = updatedContacts
         await user.save()
+
+        // Удаление того, кто удалял из списка контактов
+        // const contactContacts = contact.contacts
+        //   ? JSON.parse(contact.contacts)
+        //   : []
+        // if (!contactContacts.includes(userId)) {
+        //   throw new ContactNotFound()
+        // }
+
+        // let updatedContactContacts = contactContacts.filter(
+        //   (idToRemove: number) => idToRemove !== userId
+        // )
+        // if (!updatedContactContacts.length) {
+        //   updatedContactContacts = null
+        // } else {
+        //   updatedContactContacts = JSON.stringify(updatedContactContacts)
+        // }
+
+        // contact.contacts = updatedContactContacts
+        // await contact.save()
       })
 
       return res.status(200).json({
@@ -278,15 +328,28 @@ const chatService: ChatServiceApi = {
         const populatedContacts = await userService.findAll({
           where: { id: contactsList }
         })
-        const invitedContacts = await Invite.findAll({
-          where: { inviter_id: userId, type: 'contact' },
+        const contactsDTO = chatService.contactsToDTO(populatedContacts)
+
+        const invites = await Invite.findAll({
+          where: {
+            [Op.or]: [
+              { inviter_id: userId, type: 'contact' },
+              { user_id: userId, type: 'contact' }
+            ]
+          },
           raw: true
         })
 
-        const contactsDTO = chatService.contactsToDTO(populatedContacts)
-        const invitesDTO = chatService.invitesToDTO(invitedContacts)
+        const contactRequests = invites.filter(
+          (item) => item.inviter_id === userId
+        )
+        const invititions = invites.filter((item) => item.user_id === userId)
+        const contactRequestsDTO = chatService.contactRequestsToDTO(
+          contactRequests
+        )
+        const invitationsDTO = chatService.invitesToDTO(invititions)
 
-        data = [...contactsDTO, ...invitesDTO]
+        data = [...contactsDTO, ...contactRequestsDTO, ...invitationsDTO]
       })
 
       return res.status(200).json({
@@ -306,10 +369,17 @@ const chatService: ChatServiceApi = {
     next: NextFunction
   ): Promise<Response<ServerResponse>> {
     try {
-      const { inviterId, inviterEmail, inviterContacts, email, text } = req.body
+      const {
+        inviterId,
+        inviterName,
+        inviterEmail,
+        inviterContacts,
+        email,
+        text
+      } = req.body
 
-      const message = validationService.validate(req)
-      if (message) {
+      const validationMessage = validationService.validate(req)
+      if (validationMessage) {
         throw new ValidationError()
       }
 
@@ -318,55 +388,82 @@ const chatService: ChatServiceApi = {
       }
 
       let userToAdd: UserDTO
+      let message: string
+      let data: UserDTO
 
       await sequelize.transaction(async () => {
         const userToAddModel = await userService.findByEmail(email)
         if (!userToAddModel) {
           throw new EmailDoesNotExist()
         }
-
-        const userContacts = inviterContacts ? JSON.parse(inviterContacts) : []
         userToAdd = userService.userToDTO(userToAddModel)
 
+        const userContacts = inviterContacts ? JSON.parse(inviterContacts) : []
         if (userContacts.includes(userToAdd.id)) {
           throw new ContactAllreadyExist()
         }
 
-        const foundedInvite = await Invite.findOne({
-          where: {
-            user_id: userToAdd.id,
-            inviter_id: inviterId,
-            type: 'contact'
+        // dd a contact without an invitation
+        const userToAddContacts = userToAdd.contacts
+          ? JSON.parse(userToAdd.contacts)
+          : []
+
+        if (userToAddContacts.includes(inviterId)) {
+          const inviterModel = await userService.findById(inviterId)
+          if (userContacts.includes(userToAdd.id)) {
+            throw new ContactAllreadyExist()
           }
-        })
 
-        if (foundedInvite) {
-          throw new InviteAllreadyExists()
+          userContacts.push(userToAdd.id)
+          inviterModel.contacts = JSON.stringify(userContacts)
+          await inviterModel.save()
+
+          message = 'Контакт добавлен'
+
+          data = userToAdd
+          data.contactAdded = true
+        } else {
+          // new invite
+          const foundedInvite = await Invite.findOne({
+            where: {
+              user_id: userToAdd.id,
+              inviter_id: inviterId,
+              type: 'contact'
+            }
+          })
+
+          if (foundedInvite) {
+            throw new InviteAllreadyExists()
+          }
+
+          userToAdd.photo = null
+
+          await Invite.create({
+            inviter_id: inviterId,
+            inviter_name: inviterName,
+            user_id: userToAdd.id,
+            user_name: userToAdd.name,
+            type: 'contact',
+            text: text || null
+          })
+
+          message =
+            'Запрос на добавление в контакты отправлен и ждет подтверждения'
+          data = userToAdd
         }
-
-        userToAdd.photo = null
-
-        await Invite.create({
-          inviter_id: inviterId,
-          user_id: userToAdd.id,
-          user_name: userToAdd.name,
-          type: 'contact',
-          text: text || null
-        })
       })
 
       return res.status(201).json({
         type: 'success',
-        message:
-          'Запрос на добавление в контакты отправлен и ждет подтверждения',
-        data: userToAdd
+        message,
+        data
       })
     } catch (error) {
       next(error)
     }
   },
 
-  /** Удаление запроса на добавление в контакты */
+  /** Удаление инвайта */
   async removeInvite(
     req: Request,
     res: Response,

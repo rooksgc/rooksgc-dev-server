@@ -75,6 +75,58 @@ const webSocketService = (server: HttpServer): void => {
       }
     })
 
+    // Invite contact
+    socket.on('contact:invite:request', ({ to: userId, contact }) => {
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            socket.to(socketId).emit('contact:invite', contact)
+          })
+        }
+      }
+    })
+
+    // Add contact
+    socket.on('contact:add:request', ({ to: userId, contact }) => {
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            socket.to(socketId).emit('contact:add', contact)
+          })
+        }
+      }
+    })
+
+    // Remove invite
+    socket.on('invite:remove:request', ({ to: userId, contact }) => {
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            socket.to(socketId).emit('invite:remove', contact)
+          })
+        }
+      }
+    })
+
+    // Cancel invite
+    socket.on('invite:cancel:request', ({ to: userId, contact }) => {
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            socket.to(socketId).emit('invite:cancel', contact)
+          })
+        }
+      }
+    })
+
     socket.broadcast.emit('user:connected', {
       socketId: socket.id,
       userId: socket.userId
@@ -118,9 +170,6 @@ const webSocketService = (server: HttpServer): void => {
           users.delete(userId)
         }
       }
-
-      // (reason: string) => {}
-      // const message = `[${formatDate()}] ${id} disconnected: ${reason}`
     })
   })
 }
