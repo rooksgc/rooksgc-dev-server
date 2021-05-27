@@ -100,3 +100,18 @@ export class InviteDoesNotExists extends Error {
   private readonly statusCode = 409
   readonly message = 'Запроса на добавление не поступало'
 }
+
+export class ChannelAllreadyExistForUser extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Пользователь уже добавлен в канал'
+}
+
+export class ChannelNotFound extends Error {
+  private readonly statusCode = 404
+  readonly message = 'Канал не найден'
+}
+
+export class UserAllreadyInChannel extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Пользователь уже находится в канале'
+}

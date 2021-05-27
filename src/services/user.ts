@@ -87,11 +87,11 @@ const userService: UserServiceApi = {
     try {
       const { ids } = req.body
       const usersList = JSON.parse(ids)
-
       const users = await User.findAll({
         where: { id: usersList }
       })
       const usersDTO = users.map((user) => userService.userToDTO(user))
+
       return res.status(200).json({ type: 'success', data: usersDTO })
     } catch (error) {
       next(error)

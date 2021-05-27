@@ -49,16 +49,16 @@ const webSocketService = (server: HttpServer): void => {
 
     updateConnectedUsers(socket)
 
-    socket.on('channels:subscribe', (channels) => {
+    socket.on('channels:subscribe', (channels: string[]) => {
       if (Array.isArray(channels) && channels.length) {
-        channels.forEach(({ id: channelId }) => {
-          socket.join(channelId)
+        channels.forEach((channelId: string) => {
+          socket.join(String(channelId))
         })
       }
     })
 
-    socket.on('channel:subscribe', (channelId) => {
-      socket.join(channelId)
+    socket.on('channel:subscribe', (channelId: number) => {
+      socket.join(String(channelId))
     })
 
     // Invite user to channel
@@ -69,7 +69,7 @@ const webSocketService = (server: HttpServer): void => {
         if (userSockets.size > 0) {
           userSockets.forEach((socketId: string) => {
             const socketSession = chat.sockets.get(socketId)
-            socketSession.join(channelId)
+            socketSession.join(String(channelId))
           })
         }
       }
@@ -101,7 +101,7 @@ const webSocketService = (server: HttpServer): void => {
       }
     })
 
-    // Remove invite
+    // Remove contact invite
     socket.on('invite:remove:request', ({ to: userId, contact }) => {
       if (users.has(userId)) {
         const userSockets = users.get(userId)
@@ -114,7 +114,7 @@ const webSocketService = (server: HttpServer): void => {
       }
     })
 
-    // Cancel invite
+    // Cancel contact invite
     socket.on('invite:cancel:request', ({ to: userId, contact }) => {
       if (users.has(userId)) {
         const userSockets = users.get(userId)
@@ -127,14 +127,33 @@ const webSocketService = (server: HttpServer): void => {
       }
     })
 
+    // Add user to channel
+    socket.on(
+      'channel:adduser:request',
+      ({ to: userId, inviterName, channel }) => {
+        if (users.has(userId)) {
+          const userSockets = users.get(userId)
+
+          if (userSockets.size > 0) {
+            userSockets.forEach((socketId: string) => {
+              socket
+                .to(socketId)
+                .emit('channel:adduser', { inviterName, channel })
+            })
+          }
+        }
+      }
+    )
+
     socket.broadcast.emit('user:connected', {
       socketId: socket.id,
       userId: socket.userId
     })
 
     socket.on('channel:message:send', ({ activeChannelId, message }) => {
-      socket.to(activeChannelId).emit('channel:message:broadcast', {
-        activeChannelId,
+      const channelId = String(activeChannelId)
+      socket.to(channelId).emit('channel:message:broadcast', {
+        activeChannelId: channelId,
         message
       })
     })

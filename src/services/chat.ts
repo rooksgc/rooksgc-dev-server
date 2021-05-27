@@ -9,10 +9,13 @@ import {
   ContactNotFound,
   InviteAllreadyExists,
   InviteDoesNotExists,
-  InviteWasCancelled
+  InviteWasCancelled,
+  ChannelAllreadyExistForUser,
+  ChannelNotFound,
+  UserAllreadyInChannel
 } from 'services/errors'
 
-import { userService, UserDTO } from 'services/user'
+import { userService, UserDTO, UserModel } from 'services/user'
 
 const { Channel, Invite, sequelize, Op } = require('database/models')
 
@@ -45,6 +48,7 @@ export interface ChatServiceApi {
   populateContacts: IResponse
   inviteToContacts: IResponse
   removeInvite: IResponse
+  addToChannel: IResponse
 }
 
 const chatService: ChatServiceApi = {
@@ -60,13 +64,15 @@ const chatService: ChatServiceApi = {
   },
 
   /** Преобразовать список контактов в транспортный объект */
-  contactsToDTO: (contacts: any): any =>
+  contactsToDTO: (contacts: typeof UserModel[]): UserDTO[] =>
     contacts.map((contact) => ({
       id: contact.id,
       name: contact.name,
       email: contact.email,
       photo: contact.photo,
-      role: contact.role
+      role: contact.role,
+      channels: contact.channels,
+      contacts: contact.contacts
     })),
 
   /** Преобразовать список запросов в контакты в транспортный объект */
@@ -105,7 +111,7 @@ const chatService: ChatServiceApi = {
         where: { id: channelsList }
       })
 
-      return res.status(201).json({
+      return res.status(200).json({
         type: 'success',
         message: 'Список каналов получен',
         data: chatService.channelsToDTO(populatedChannels)
@@ -362,7 +368,7 @@ const chatService: ChatServiceApi = {
     }
   },
 
-  /** Запрос на добавление в контакты */
+  /** Инвайт в контакты */
   async inviteToContacts(
     req: Request,
     res: Response,
@@ -489,6 +495,63 @@ const chatService: ChatServiceApi = {
       return res.status(200).json({
         type: 'success',
         message: 'Запрос на добавление контакта отменен'
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  /** Добавление пользователя в канал */
+  async addToChannel(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { channelId, channelName, email } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const user = await userService.findByEmail(email)
+      if (!user) {
+        throw new EmailDoesNotExist()
+      }
+
+      const userChannels = user.channels ? JSON.parse(user.channels) : []
+      if (userChannels.includes(channelId)) {
+        throw new ChannelAllreadyExistForUser()
+      }
+
+      userChannels.push(channelId)
+      user.channels = JSON.stringify(userChannels)
+      await user.save()
+
+      const foundedChannel = await Channel.findByPk(channelId)
+      if (!foundedChannel) {
+        throw new ChannelNotFound()
+      }
+
+      const channelMembers = foundedChannel.members
+        ? JSON.parse(foundedChannel.members)
+        : []
+
+      if (channelMembers.includes(user.id)) {
+        throw new UserAllreadyInChannel()
+      }
+
+      channelMembers.push(user.id)
+      foundedChannel.members = JSON.stringify(channelMembers)
+      await foundedChannel.save()
+
+      const channel = chatService.channelsToDTO([foundedChannel])[0]
+      const invitedUser = userService.userToDTO(user)
+
+      return res.status(201).json({
+        type: 'success',
+        message: `Пользователь ${user.name} добавлен в канал ${channelName}`,
+        data: { invitedUser, channel }
       })
     } catch (error) {
       next(error)
