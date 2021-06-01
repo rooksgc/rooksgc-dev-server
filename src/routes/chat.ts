@@ -11,7 +11,8 @@ const {
   populateContacts,
   inviteToContacts,
   removeInvite,
-  addToChannel
+  addToChannel,
+  leaveChannel
 } = chatService
 
 const chatRoutes = (router: Router): void => {
@@ -44,6 +45,13 @@ const chatRoutes = (router: Router): void => {
       body('channelName').exists().isString(),
       body('email').exists().trim().isEmail(),
       addToChannel
+    )
+    .patch(
+      '/chat/channel/leave',
+      authMiddleware,
+      body('channelId').exists().isNumeric(),
+      body('userId').exists().isNumeric(),
+      leaveChannel
     )
     .delete('/chat/:userId/contact/:contactId', authMiddleware, removeContact)
     .post(

@@ -115,3 +115,8 @@ export class UserAllreadyInChannel extends Error {
   private readonly statusCode = 409
   readonly message = 'Пользователь уже находится в канале'
 }
+
+export class OwnerCanNotLeaveChannel extends Error {
+  private readonly statusCode = 409
+  readonly message = 'Владелец канала не может его покинуть'
+}

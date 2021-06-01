@@ -57,8 +57,27 @@ const webSocketService = (server: HttpServer): void => {
       }
     })
 
+    // Подписка на канал
     socket.on('channel:subscribe', (channelId: number) => {
       socket.join(String(channelId))
+    })
+
+    // Покидание канала пользователем
+    socket.on('channel:leave', (payload) => {
+      const { channelId, userId } = payload
+      if (users.has(userId)) {
+        const userSockets = users.get(userId)
+
+        if (userSockets.size > 0) {
+          userSockets.forEach((socketId: string) => {
+            const socketSession = chat.sockets.get(socketId)
+            socketSession.leave(String(channelId))
+          })
+        }
+      }
+
+      const channel = String(channelId)
+      socket.to(channel).emit('channel:member:leave', payload)
     })
 
     // Invite user to channel

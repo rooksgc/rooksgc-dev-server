@@ -12,7 +12,8 @@ import {
   InviteWasCancelled,
   ChannelAllreadyExistForUser,
   ChannelNotFound,
-  UserAllreadyInChannel
+  UserAllreadyInChannel,
+  OwnerCanNotLeaveChannel
 } from 'services/errors'
 
 import { userService, UserDTO, UserModel } from 'services/user'
@@ -49,6 +50,7 @@ export interface ChatServiceApi {
   inviteToContacts: IResponse
   removeInvite: IResponse
   addToChannel: IResponse
+  leaveChannel: IResponse
 }
 
 const chatService: ChatServiceApi = {
@@ -501,7 +503,9 @@ const chatService: ChatServiceApi = {
     }
   },
 
-  /** Добавление пользователя в канал */
+  /** Добавление пользователя в канал
+   * @todo transaction
+   */
   async addToChannel(
     req: Request,
     res: Response,
@@ -552,6 +556,59 @@ const chatService: ChatServiceApi = {
         type: 'success',
         message: `Пользователь ${user.name} добавлен в канал ${channelName}`,
         data: { invitedUser, channel }
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  /** Покидание канала пользователем
+   * @todo transaction
+   */
+  async leaveChannel(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response<ServerResponse>> {
+    try {
+      const { channelId, userId } = req.body
+      const message = validationService.validate(req)
+      if (message) {
+        throw new ValidationError()
+      }
+
+      const foundedChannel = await Channel.findByPk(channelId)
+      if (!foundedChannel) {
+        throw new ChannelNotFound()
+      }
+
+      if (foundedChannel.owner_id === userId) {
+        throw new OwnerCanNotLeaveChannel()
+      }
+
+      const channelMembers = foundedChannel.members
+        ? JSON.parse(foundedChannel.members)
+        : []
+
+      const updatedMembers = channelMembers.filter((id) => id !== userId)
+      foundedChannel.members = JSON.stringify(updatedMembers)
+
+      await foundedChannel.save()
+
+      const user = await userService.findById(userId)
+      if (!user) {
+        throw new EmailDoesNotExist()
+      }
+
+      const userChannels = user.channels ? JSON.parse(user.channels) : []
+      const updatedChannels = userChannels.filter((id) => id !== channelId)
+      user.channels = JSON.stringify(updatedChannels)
+
+      await user.save()
+
+      return res.status(201).json({
+        type: 'success',
+        message: `Пользователь ${user.name} покидает канал ${foundedChannel.name}`
       })
     } catch (error) {
       next(error)
