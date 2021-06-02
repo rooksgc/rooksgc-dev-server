@@ -1,6 +1,7 @@
 import config from 'config'
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer'
 import { EmailSendingError } from 'services/errors'
+import { loggerService } from 'services/logger'
 
 export interface EmailServiceApi {
   send: (
@@ -44,6 +45,7 @@ const emailService: EmailServiceApi = {
     try {
       return await transporter.sendMail(email)
     } catch (error) {
+      loggerService.error(error.message)
       throw new EmailSendingError()
     }
   },

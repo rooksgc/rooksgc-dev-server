@@ -145,14 +145,14 @@ const authService: AuthServiceApi = {
           throw new UserActivationError()
         }
 
-        const user = await User(secret.user_id)
+        const user = await User.findByPk(secret.user_id)
         user.is_active = true
         await user.save()
 
         await secretService.deleteById(secret.id)
       })
 
-      return res.status(204).json({
+      return res.status(200).json({
         type: 'success',
         message:
           'Активация прошла успешно. Вы можете перейти на страницу логина для входа.'

@@ -503,9 +503,7 @@ const chatService: ChatServiceApi = {
     }
   },
 
-  /** Добавление пользователя в канал
-   * @todo transaction
-   */
+  /** Добавление пользователя в канал */
   async addToChannel(
     req: Request,
     res: Response,
@@ -518,39 +516,46 @@ const chatService: ChatServiceApi = {
         throw new ValidationError()
       }
 
-      const user = await userService.findByEmail(email)
-      if (!user) {
-        throw new EmailDoesNotExist()
-      }
+      let channel
+      let invitedUser
+      let user
 
-      const userChannels = user.channels ? JSON.parse(user.channels) : []
-      if (userChannels.includes(channelId)) {
-        throw new ChannelAllreadyExistForUser()
-      }
+      await sequelize.transaction(async () => {
+        user = await userService.findByEmail(email)
+        if (!user) {
+          throw new EmailDoesNotExist()
+        }
 
-      userChannels.push(channelId)
-      user.channels = JSON.stringify(userChannels)
-      await user.save()
+        const userChannels = user.channels ? JSON.parse(user.channels) : []
+        if (userChannels.includes(channelId)) {
+          throw new ChannelAllreadyExistForUser()
+        }
 
-      const foundedChannel = await Channel.findByPk(channelId)
-      if (!foundedChannel) {
-        throw new ChannelNotFound()
-      }
+        userChannels.push(channelId)
+        user.channels = JSON.stringify(userChannels)
+        await user.save()
 
-      const channelMembers = foundedChannel.members
-        ? JSON.parse(foundedChannel.members)
-        : []
+        const foundedChannel = await Channel.findByPk(channelId)
+        if (!foundedChannel) {
+          throw new ChannelNotFound()
+        }
 
-      if (channelMembers.includes(user.id)) {
-        throw new UserAllreadyInChannel()
-      }
+        const channelMembers = foundedChannel.members
+          ? JSON.parse(foundedChannel.members)
+          : []
 
-      channelMembers.push(user.id)
-      foundedChannel.members = JSON.stringify(channelMembers)
-      await foundedChannel.save()
+        if (channelMembers.includes(user.id)) {
+          throw new UserAllreadyInChannel()
+        }
 
-      const channel = chatService.channelsToDTO([foundedChannel])[0]
-      const invitedUser = userService.userToDTO(user)
+        channelMembers.push(user.id)
+        foundedChannel.members = JSON.stringify(channelMembers)
+        await foundedChannel.save()
+
+        // eslint-disable-next-line prefer-destructuring
+        channel = chatService.channelsToDTO([foundedChannel])[0]
+        invitedUser = userService.userToDTO(user)
+      })
 
       return res.status(201).json({
         type: 'success',
