@@ -1,10 +1,8 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import authService from '../services/auth'
-import authMiddleware from '../middleware/auth'
+import { authService } from 'services/auth'
 
 const {
-  findAll,
   register,
   activate,
   login,
@@ -14,7 +12,7 @@ const {
   fetchByToken
 } = authService
 
-export default (router: Router): void => {
+const authRoutes = (router: Router): void => {
   router
     .put(
       '/auth/register',
@@ -29,7 +27,6 @@ export default (router: Router): void => {
       register
     )
     .patch('/auth/activate/:code', activate)
-    .get('/auth/users', authMiddleware, findAll)
     .post(
       '/auth/login',
       body('email').trim().isEmail(),
@@ -51,3 +48,5 @@ export default (router: Router): void => {
     )
     .post('/auth/fetch-by-token', body('token').trim().isString(), fetchByToken)
 }
+
+export { authRoutes }

@@ -1,6 +1,6 @@
 {
   "name": "rooksgc-dev-server",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Express server for API calls",
   "repository": {
     "type": "git",
@@ -8,9 +8,9 @@
   },
   "main": "src/index.ts",
   "scripts": {
-    "start": "cross-env NODE_ENV=production ts-node src/index.ts",
-    "dev": "cross-env NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.test.ts' --exec ts-node src/index.ts",
-    "test": "jest --forceExit --coverage --verbose",
+    "start": "cross-env NODE_PATH=src NODE_ENV=production ts-node src/index.ts",
+    "dev": "cross-env NODE_PATH=src NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.test.ts' --exec ts-node src/index.ts",
+    "test": "jest --passWithNoTests --watchAll=false",
     "lint": "tsc --noEmit && eslint . --ext .js,.ts",
     "lint:fix": "tsc --noEmit && eslint . --fix --ext .js,.ts",
     "db:migrate:dev": "cross-env NODE_ENV=development sequelize-cli db:migrate",
@@ -22,7 +22,8 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run lint"
+      "pre-commit": "npm run lint",
+      "pre-push": "npm test"
     }
   },
   "author": "Shestakov Anton<rooksgc@gmail.com>",
@@ -66,7 +67,7 @@
     ],
     "parserOptions": {
       "project": "./tsconfig.json",
-      "ecmaVersion": 2018,
+      "ecmaVersion": 2021,
       "sourceType": "module"
     },
     "globals": {
@@ -75,15 +76,37 @@
     },
     "rules": {
       "prettier/prettier": "error",
-      "camelcase": 0,
-      "no-return-await": 0,
-      "max-classes-per-file": 0,
-      "consistent-return": 0,
-      "import/no-dynamic-require": 0,
-      "@typescript-eslint/no-var-requires": 0,
-      "lines-between-class-members": 0
+      "camelcase": "off",
+      "no-return-await": "off",
+      "max-classes-per-file": "off",
+      "consistent-return": "off",
+      "import/no-dynamic-require": "off",
+      "import/prefer-default-export": "off",
+      "import/no-default-export": "error",
+      "@typescript-eslint/no-var-requires": "off",
+      "lines-between-class-members": "off"
+    },
+    "settings": {
+      "import/resolver": {
+        "node": {
+          "paths": [
+            "src"
+          ]
+        }
+      }
     }
   },
+  "eslintIgnore": [
+    "/build/*",
+    "/coverage/*",
+    "**/*.d.ts",
+    "/public/",
+    "/src/types/",
+    "*.spec.ts",
+    "*.test.ts",
+    "/src/tests/*",
+    "/config/*"
+  ],
   "dependencies": {
     "@types/bcryptjs": "^2.4.2",
     "@types/express-jwt": "^6.0.1",

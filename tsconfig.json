@@ -1,21 +1,17 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "baseUrl": "src",
+    "rootDir": "src",
+    "target": "esnext",
     "esModuleInterop": true,
-    "target": "es2018",
+    "typeRoots": ["node_modules/@types"],
+    "module": "commonjs",
     "moduleResolution": "node",
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "noImplicitAny": false,
-    "rootDir": "./src",
-    "outDir": "./build",
-    "baseUrl": ".",
-    "typeRoots": ["node_modules/@types", "src/types/*"],
-    "paths": {
-      "*": ["node_modules/*", "src/types/*"]
-    }
+    "noImplicitAny": false
   },
-  "exclude": ["node_modules", "build"],
-  "include": ["src/**/*"]
+  "exclude": ["node_modules", "/*.test.tsx?"],
+  "include": ["src"]
 }

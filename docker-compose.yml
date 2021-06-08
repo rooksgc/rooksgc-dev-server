@@ -1,0 +1,67 @@
+version: '3'
+services:
+  nginx:
+    image: nginx:1.21
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./data/nginx:/etc/nginx/conf.d
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  postgres:
+    restart: always
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - ./postgres-data/postgres:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - skynet
+
+  migration:
+    image: app
+    volumes:
+      - .:/app
+    command:
+      [
+        './wait-for-it.sh',
+        'postgres:5432',
+        '--',
+        'npm',
+        'run',
+        'db:migrate:dev'
+      ]
+    links:
+      - postgres
+    depends_on:
+      - postgres
+    networks:
+      - skynet
+
+  app:
+    restart: always
+    build: .
+    ports:
+      - 5000:5000
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    networks:
+      - skynet
+    command: ['npm', 'run', 'dev']
+
+networks:
+  skynet:
+    driver: bridge

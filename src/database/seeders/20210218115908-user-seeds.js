@@ -9,6 +9,8 @@ module.exports = {
           password: 'aY8djw9~aj',
           role: 'user',
           is_active: false,
+          contacts: null,
+          channels: null,
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -18,6 +20,8 @@ module.exports = {
           password: 'j*h37h-d02',
           role: 'user',
           is_active: false,
+          contacts: '[1,3]',
+          channels: null,
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -27,6 +31,8 @@ module.exports = {
           password: 'J0jhh&1!3f',
           role: 'user',
           is_active: false,
+          contacts: '[1,2]',
+          channels: null,
           createdAt: new Date(),
           updatedAt: new Date()
         }

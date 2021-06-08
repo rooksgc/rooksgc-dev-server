@@ -13,7 +13,7 @@ export interface ValidationServiceApi {
   validate(req: Request): string
 }
 
-const ValidationService: ValidationServiceApi = {
+const validationService: ValidationServiceApi = {
   validate(req: Request): string {
     return validationResult(req)
       .array()
@@ -25,4 +25,4 @@ const ValidationService: ValidationServiceApi = {
   }
 }
 
-export default ValidationService
+export { validationService }
