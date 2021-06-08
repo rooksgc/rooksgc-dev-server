@@ -38,7 +38,9 @@ Thumbs.db
 build/**/*
 dist/**/*
 
-# ignore yarn.lock
+# Ignore yarn.lock
 yarn.lock
 
+# Docker volumes mapping
 postgres-data
+data
