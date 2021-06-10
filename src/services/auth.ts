@@ -194,7 +194,7 @@ const authService: AuthServiceApi = {
         expiresIn: config.get('jwt.expiresIn')
       })
 
-      return res.status(201).json({
+      return res.status(200).json({
         type: 'success',
         message: 'Успешный вход в систему!',
         token,
