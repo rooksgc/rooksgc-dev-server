@@ -1,20 +1,5 @@
 version: '3'
 services:
-  nginx:
-    image: nginx:1.21
-    ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - ./data/nginx:/etc/nginx/conf.d
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
   postgres:
     restart: always
     image: postgres:13
@@ -28,6 +13,19 @@ services:
       - '5432:5432'
     networks:
       - skynet
+
+  app:
+    restart: always
+    build: .
+    ports:
+      - 5000:5000
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    networks:
+      - skynet
+    command: ['npm', 'run', 'dev']
 
   migration:
     image: app
@@ -44,23 +42,12 @@ services:
       ]
     links:
       - postgres
+      - app
     depends_on:
       - postgres
+      - app
     networks:
       - skynet
-
-  app:
-    restart: always
-    build: .
-    ports:
-      - 5000:5000
-    volumes:
-      - .:/app
-    depends_on:
-      - postgres
-    networks:
-      - skynet
-    command: ['npm', 'run', 'dev']
 
 networks:
   skynet:

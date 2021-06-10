@@ -1,11 +1,11 @@
 FROM node:14
 
-ARG APP_DIR=app
-RUN mkdir -p ${APP_DIR}
-WORKDIR ${APP_DIR}
-COPY package*.json ./${APP_DIR}
 USER node
+RUN mkdir -p /home/node/app
+WORKDIR /home/node/app
+
+COPY --chown=node:node package*.json .
 RUN npm install
-COPY --chown=node:node . /${APP_DIR}
+COPY --chown=node:node . .
 
 EXPOSE 5000
