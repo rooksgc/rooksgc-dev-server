@@ -14,23 +14,23 @@ services:
     networks:
       - skynet
 
-  app:
+  chat-node-server:
     restart: always
     build: .
     ports:
       - 5000:5000
     volumes:
-      - .:/app
+      - .:/home/node/app
     depends_on:
       - postgres
     networks:
       - skynet
-    command: ['npm', 'run', 'dev']
+    command: ['npm', 'start']
 
   migration:
-    image: app
+    image: rooksgc/chat-node-server
     volumes:
-      - .:/app
+      - .:/home/node/app
     command:
       [
         './wait-for-it.sh',
@@ -38,14 +38,14 @@ services:
         '--',
         'npm',
         'run',
-        'db:migrate:dev'
+        'db:migrate:prod'
       ]
     links:
       - postgres
-      - app
+      - rooksgc/chat-node-server
     depends_on:
       - postgres
-      - app
+      - rooksgc/chat-node-server
     networks:
       - skynet
 

@@ -10,11 +10,13 @@
   "scripts": {
     "start": "cross-env NODE_PATH=src NODE_ENV=production ts-node src/index.ts",
     "dev": "cross-env NODE_PATH=src NODE_ENV=development nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.test.ts' --exec ts-node src/index.ts",
-    "test": "jest --passWithNoTests --watchAll=false",
+    "test": "jest --passWithNoTests --watchAll=false --runInBand --forceExit --silent",
+    "test:watch": "jest --passWithNoTests --watch --runInBand --forceExit --silent",
     "lint": "tsc --noEmit && eslint . --ext .js,.ts",
     "lint:fix": "tsc --noEmit && eslint . --fix --ext .js,.ts",
     "db:migrate:dev": "cross-env NODE_ENV=development sequelize-cli db:migrate",
     "db:migrate:prod": "cross-env NODE_ENV=production sequelize-cli db:migrate",
+    "db:migrate:undo:all": "cross-env NODE_ENV=test sequelize-cli db:migrate:undo:all",
     "db:seeds:dev": "cross-env NODE_ENV=development sequelize-cli db:seed:all",
     "db:seeds:prod": "cross-env NODE_ENV=production sequelize-cli db:seed:all",
     "db:create": "sequelize-cli db:create",
@@ -36,15 +38,16 @@
     "endOfLine": "auto"
   },
   "jest": {
-    "roots": [
-      "<rootDir>/src"
-    ],
     "verbose": true,
     "globals": {
       "ts-jest": {
         "tsconfig": "tsconfig.json"
       }
     },
+    "moduleDirectories": [
+      "node_modules",
+      "src"
+    ],
     "moduleFileExtensions": [
       "ts",
       "tsx",
@@ -53,7 +56,8 @@
       "node"
     ],
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "/config/"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
