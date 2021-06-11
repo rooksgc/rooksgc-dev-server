@@ -27,7 +27,7 @@ const errorMiddleware = (
   if (statusCode >= 500) {
     logger.error(`[${ip}] ${statusCode} ${message}`)
   }
-  
+
   return res.status(statusCode).json({ type, message })
 }
 
