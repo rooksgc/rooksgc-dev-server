@@ -234,7 +234,7 @@ const authService: AuthServiceApi = {
         return emailAddress
       })
 
-      return res.status(201).json({
+      return res.status(200).json({
         type: 'success',
         message: `Ссылка для смены пароля отправлена на email ${userEmail}. Проверьте Вашу почту!`
       })
