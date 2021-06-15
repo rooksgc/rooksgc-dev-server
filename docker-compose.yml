@@ -1,20 +1,5 @@
 version: '3'
 services:
-  nginx:
-    image: nginx:1.21
-    ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - ./data/nginx:/etc/nginx/conf.d
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
   postgres:
     restart: always
     image: postgres:13
@@ -29,10 +14,23 @@ services:
     networks:
       - skynet
 
-  migration:
-    image: app
+  chat-node-server:
+    restart: always
+    build: .
+    ports:
+      - 5000:5000
     volumes:
-      - .:/app
+      - .:/home/node/app
+    depends_on:
+      - postgres
+    networks:
+      - skynet
+    command: ['npm', 'start']
+
+  migration:
+    image: rooksgc/chat-node-server
+    volumes:
+      - .:/home/node/app
     command:
       [
         './wait-for-it.sh',
@@ -40,27 +38,16 @@ services:
         '--',
         'npm',
         'run',
-        'db:migrate:dev'
+        'db:migrate:prod'
       ]
     links:
       - postgres
+      - rooksgc/chat-node-server
     depends_on:
       - postgres
+      - rooksgc/chat-node-server
     networks:
       - skynet
-
-  app:
-    restart: always
-    build: .
-    ports:
-      - 5000:5000
-    volumes:
-      - .:/app
-    depends_on:
-      - postgres
-    networks:
-      - skynet
-    command: ['npm', 'run', 'dev']
 
 networks:
   skynet:

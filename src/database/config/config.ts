@@ -2,6 +2,8 @@ require('dotenv').config()
 
 const {
   DB_HOST,
+  DEV_DB_HOST,
+  TEST_DB_HOST,
   DB_NAME,
   TEST_DB_NAME,
   DB_USERNAME,
@@ -23,7 +25,8 @@ const common = {
 module.exports = {
   development: {
     ...common,
-    url: DEV_DATABASE_URL
+    url: DEV_DATABASE_URL,
+    host: DEV_DB_HOST
   },
   production: {
     ...common,
@@ -32,6 +35,7 @@ module.exports = {
   test: {
     ...common,
     database: TEST_DB_NAME,
-    url: TEST_DATABASE_URL
+    url: TEST_DATABASE_URL,
+    host: TEST_DB_HOST
   }
 }

@@ -43,8 +43,8 @@ webSocketService(server)
 
 app.use(errorMiddleware)
 
-async function start() {
-  try {
+try {
+  if (process.env.NODE_ENV !== 'test') {
     // eslint-disable-next-line no-console
     console.log('Routes:')
     router.stack.forEach((layer) => {
@@ -53,16 +53,18 @@ async function start() {
       // eslint-disable-next-line no-console
       console.log(` - ${method.toUpperCase()} => ${API_PATH}${path}`)
     })
+  }
 
-    server.listen(port, () =>
+  server.listen(port, () => {
+    if (process.env.NODE_ENV !== 'test') {
       // eslint-disable-next-line no-console
       console.log(`Server listening on port ${port}...`)
-    )
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Server error: ', error.message)
-    process.exit(1)
-  }
+    }
+  })
+} catch (error) {
+  // eslint-disable-next-line no-console
+  console.error('Server error: ', error.message)
+  process.exit(1)
 }
 
-start()
+export { app, API_PATH }

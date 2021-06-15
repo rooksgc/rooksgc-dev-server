@@ -2,6 +2,9 @@ import { Request } from 'express'
 
 const { validationResult } = require('express-validator')
 
+export const WRONG_PASSWORD_MESSAGE =
+  'Пароль должен содержать не менее 6 символов латинского алфавита, включая 1 строчную и 1 прописную букву и хотя бы 1 цифру'
+
 interface ExpressValidatorResponse {
   value: string
   msg: string

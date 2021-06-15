@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import { authService } from 'services/auth'
+import { WRONG_PASSWORD_MESSAGE } from 'services/validation'
 
 const {
   register,
@@ -21,9 +22,7 @@ const authRoutes = (router: Router): void => {
       body('password')
         .trim()
         .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{6,}$/, 'i')
-        .withMessage(
-          'Пароль должен содержать не менее 6 символов латинского алфавита, включая 1 строчную и 1 прописную букву и хотя бы 1 цифру'
-        ),
+        .withMessage(WRONG_PASSWORD_MESSAGE),
       register
     )
     .patch('/auth/activate/:code', activate)
