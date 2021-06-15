@@ -24,7 +24,7 @@ const errorMiddleware = (
   const statusCode = err.statusCode || ERROR_DEFAULT_STATUS_CODE
   const ip = req.ip.split(':').pop()
 
-  if (statusCode >= 500) {
+  if (statusCode >= 500 && process.env.NODE_ENV !== 'test') {
     logger.error(`[${ip}] ${statusCode} ${message}`)
   }
 
