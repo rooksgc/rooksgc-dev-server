@@ -294,16 +294,13 @@ const authService: AuthServiceApi = {
 
         const { user_id } = secret
         const user = await User.findByPk(user_id)
-        if (!user) {
-          throw new UserNotFound()
-        }
-
         const newPassword = await authService.hashPassword(password)
+
         user.password = newPassword
         await user.save()
       })
 
-      return res.status(201).json({
+      return res.status(200).json({
         type: 'success',
         message: 'Пароль успешно изменен!'
       })
@@ -349,7 +346,7 @@ const authService: AuthServiceApi = {
       }
 
       return res
-        .status(201)
+        .status(200)
         .json({ type: 'success', data: userService.userToDTO(user) })
     } catch (error) {
       next(error)

@@ -6,21 +6,21 @@ import { SecretTypes } from 'services/secret'
 const { sequelize } = require('database/models')
 const { User, Secret } = require('database/models')
 
-describe('check secret routes', () => {
+describe('change password routes', () => {
   beforeAll(async () => {
     await User.sync({ force: true })
     await Secret.sync({ force: true })
 
-    const password = await authService.hashPassword('aY8djw9~aj')
+    const password = await authService.hashPassword('k~9Kh76dhGd')
 
     await User.bulkCreate([
       {
         id: 1,
-        name: 'Mary',
-        email: 'mary@yandex.ru',
+        name: 'Garry',
+        email: 'garry@gmail.com',
         password,
         role: 'USER',
-        is_active: false,
+        is_active: true,
         contacts: null,
         channels: null,
         createdAt: new Date(),
@@ -31,8 +31,8 @@ describe('check secret routes', () => {
     await Secret.bulkCreate([
       {
         user_id: 1,
-        public_code: 'd4w3ed-edp5w8-ed4wj-dek7wx',
-        secret_type: SecretTypes.EMAIL_CONFIRMATION
+        public_code: '4mdJ8-j7hj8-l298c-cmj297',
+        secret_type: SecretTypes.RECOVER_PASSWORD
       }
     ])
   })
@@ -42,26 +42,27 @@ describe('check secret routes', () => {
     await sequelize.queryInterface.bulkDelete('Secrets', null, {})
   })
 
-  it('valid secret code', async () => {
-    const code = 'd4w3ed-edp5w8-ed4wj-dek7wx'
-    const secretType = SecretTypes.EMAIL_CONFIRMATION
+  it('correct code for password recovery', async () => {
+    const code = '4mdJ8-j7hj8-l298c-cmj297'
+    const password = 'newPassword002'
 
     const response = await request(app)
-      .post(`${API_PATH}/auth/check-secret`)
-      .send({ code, secretType })
+      .patch(`${API_PATH}/auth/change-password`)
+      .send({ code, password })
       .expect('Content-Type', /json/)
       .expect(200)
 
     expect(response.body.type).toBe('success')
+    expect(response.body.message).toBe('Пароль успешно изменен!')
   })
 
-  it('secret code invalid or not found', async () => {
-    const code = 'missing-secret-code'
-    const secretType = SecretTypes.EMAIL_CONFIRMATION
+  it('secret code not found', async () => {
+    const code = 'wrong-secret-code'
+    const password = 'newpassWordAgain78'
 
     const response = await request(app)
-      .post(`${API_PATH}/auth/check-secret`)
-      .send({ code, secretType })
+      .patch(`${API_PATH}/auth/change-password`)
+      .send({ code, password })
       .expect('Content-Type', /json/)
       .expect(404)
 
@@ -71,17 +72,21 @@ describe('check secret routes', () => {
     )
   })
 
-  it('invalid secretType', async () => {
-    const code = 'd4w3ed-edp5w8-ed4wj-dek7wx'
-    const secretType = 'user_confirmation'
+  it('user and secret codes was deleted', async () => {
+    await sequelize.queryInterface.bulkDelete('Users', null, {})
+
+    const code = '4mdJ8-j7hj8-l298c-cmj297'
+    const password = 'newpassWordAgain78'
 
     const response = await request(app)
-      .post(`${API_PATH}/auth/check-secret`)
-      .send({ code, secretType })
+      .patch(`${API_PATH}/auth/change-password`)
+      .send({ code, password })
       .expect('Content-Type', /json/)
-      .expect(400)
+      .expect(404)
 
     expect(response.body.type).toBe('error')
-    expect(response.body.message).toBe('Internal Server Error')
+    expect(response.body.message).toBe(
+      'Ошибка смены пароля: неверный или уже использованный секретный код'
+    )
   })
 })

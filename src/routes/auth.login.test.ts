@@ -8,7 +8,9 @@ const { User } = require('database/models')
 describe('login routes', () => {
   beforeAll(async () => {
     await User.sync({ force: true })
+
     const password = await authService.hashPassword('aY8djw9~aj')
+
     await User.bulkCreate([
       {
         name: 'John',
@@ -36,8 +38,8 @@ describe('login routes', () => {
   })
 
   afterAll(async () => {
-    sequelize.queryInterface.bulkDelete('Users', null, {})
-    sequelize.queryInterface.bulkDelete('Secrets', null, {})
+    await sequelize.queryInterface.bulkDelete('Users', null, {})
+    await sequelize.queryInterface.bulkDelete('Secrets', null, {})
   })
 
   it('correct login for activated user', async () => {
