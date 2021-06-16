@@ -1,7 +1,11 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import { authService } from 'services/auth'
-import { WRONG_PASSWORD_MESSAGE } from 'services/validation'
+import {
+  INVALID_PASSWORD,
+  INVALID_SECRET_CODE,
+  INVALID_SECRET_TYPE
+} from 'services/validation'
 
 const {
   register,
@@ -22,7 +26,7 @@ const authRoutes = (router: Router): void => {
       body('password')
         .trim()
         .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{6,}$/, 'i')
-        .withMessage(WRONG_PASSWORD_MESSAGE),
+        .withMessage(INVALID_PASSWORD),
       register
     )
     .patch('/auth/activate/:code', activate)
@@ -35,8 +39,11 @@ const authRoutes = (router: Router): void => {
     .post('/auth/recover', body('email').trim().isEmail(), recover)
     .post(
       '/auth/check-secret',
-      body('code').trim().isString(),
-      body('secretType').isString().isUppercase(),
+      body('code').trim().isString().withMessage(INVALID_SECRET_CODE),
+      body('secretType')
+        .isString()
+        .isUppercase()
+        .withMessage(INVALID_SECRET_TYPE),
       checkSecret
     )
     .patch(

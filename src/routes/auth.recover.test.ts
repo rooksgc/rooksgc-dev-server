@@ -5,7 +5,7 @@ import { authService } from 'services/auth'
 const { sequelize } = require('database/models')
 const { User, Secret } = require('database/models')
 
-describe('register routes', () => {
+describe('recover password routes', () => {
   beforeAll(async () => {
     await User.sync({ force: true })
     await Secret.sync({ force: true })
