@@ -38,8 +38,8 @@ describe('register routes', () => {
   })
 
   afterAll(async () => {
-    sequelize.queryInterface.bulkDelete('Users', null, {})
-    sequelize.queryInterface.bulkDelete('Secrets', null, {})
+    await sequelize.queryInterface.bulkDelete('Users', null, {})
+    await sequelize.queryInterface.bulkDelete('Secrets', null, {})
   })
 
   it('correct register', async () => {
